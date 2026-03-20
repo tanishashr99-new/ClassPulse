@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Bell, Search, Sun, Moon, Menu } from "lucide-react";
+import { Bell, Search, Sun, Moon, Menu, User, Settings, LogOut } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { mockNotifications } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 
 interface TopBarProps {
   title: string;
@@ -15,8 +17,13 @@ interface TopBarProps {
 export function TopBar({ title, subtitle, onMenuClick }: TopBarProps) {
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const unreadCount = mockNotifications.filter((n) => !n.read).length;
+  const { profile, signOut } = useAuth();
+  const router = useRouter();
+
+  const userInitials = profile?.full_name ? profile.full_name.substring(0, 2).toUpperCase() : "ME";
 
   return (
     <header
@@ -169,12 +176,74 @@ export function TopBar({ title, subtitle, onMenuClick }: TopBarProps) {
           </AnimatePresence>
         </div>
 
-        {/* Avatar */}
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ml-1 cursor-pointer"
-          style={{ background: "var(--gradient-primary)" }}
-        >
-          PV
+        {/* Profile Dropdown */}
+        <div className="relative">
+          <div
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ml-1 cursor-pointer"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            {userInitials}
+          </div>
+
+          <AnimatePresence>
+            {showProfileMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                className="absolute right-0 top-12 w-48 rounded-2xl border overflow-hidden z-50"
+                style={{
+                  background: "var(--bg-card)",
+                  borderColor: "var(--border-color)",
+                  boxShadow: "var(--shadow-xl)",
+                }}
+              >
+                <div className="p-3 border-b" style={{ borderColor: "var(--border-color)" }}>
+                  <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                    {profile?.full_name || "Student"}
+                  </p>
+                  <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    {profile?.email || "smartcampus@example.com"}
+                  </p>
+                </div>
+                
+                <div className="p-1">
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      router.push(`/${profile?.role || "student"}/profile`);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-xl transition-colors hover:bg-[var(--bg-secondary)]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <User className="w-4 h-4" /> My Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      router.push(`/${profile?.role || "student"}/settings`);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-xl transition-colors hover:bg-[var(--bg-secondary)]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <Settings className="w-4 h-4" /> Settings
+                  </button>
+                  <div className="h-px my-1" style={{ background: "var(--border-color)" }} />
+                  <button
+                    onClick={async () => {
+                      setShowProfileMenu(false);
+                      await signOut();
+                      router.push("/login");
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-xl transition-colors hover:bg-[rgba(239,68,68,0.1)] text-red-500"
+                  >
+                    <LogOut className="w-4 h-4" /> Logout
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

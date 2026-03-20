@@ -3,10 +3,14 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { mockAssignments } from "@/lib/mock-data";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getAssignments } from "@/lib/data-service";
 import { FileText, Clock, Upload, CheckCircle2, AlertCircle, Timer, ChevronRight } from "lucide-react";
 
 export default function StudentAssignmentsPage() {
+  const { data: assignments, loading } = useSupabaseQuery(() => getAssignments());
+  const actualAssignments = assignments || [];
+
   return (
     <>
       <TopBar title="Assignments" subtitle="Your assignments and submissions" />
@@ -36,7 +40,7 @@ export default function StudentAssignmentsPage() {
 
         {/* Assignment List */}
         <div className="space-y-4">
-          {mockAssignments.map((assignment, i) => {
+          {actualAssignments.map((assignment: any, i: number) => {
             const isCompleted = assignment.status === "completed";
             const isOverdue = assignment.status === "overdue";
             return (

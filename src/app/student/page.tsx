@@ -8,16 +8,18 @@ import { AttendanceRing } from "@/components/dashboard/AttendanceRing";
 import { SubjectRadarChart } from "@/components/charts/Charts";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getEnrollmentsByStudent, getStudentAttendance, getAssignments, getBadges, getStudentBadges, getLeaderboard } from "@/lib/data-service";
+import { useAuth } from "@/lib/auth-context";
 import { CalendarDays, FileText, Trophy, Flame, Clock, ChevronRight, CheckCircle2, AlertCircle, Timer } from "lucide-react";
 
-const STUDENT_ID = "00000000-0000-0000-0000-000000000010"; // Aarav Sharma
-
 export default function StudentDashboard() {
-  const { data: enrollments } = useSupabaseQuery(() => getEnrollmentsByStudent(STUDENT_ID));
-  const { data: attendance } = useSupabaseQuery(() => getStudentAttendance(STUDENT_ID));
+  const { user, profile } = useAuth();
+  const studentId = user?.id || "";
+
+  const { data: enrollments } = useSupabaseQuery(() => studentId ? getEnrollmentsByStudent(studentId) : Promise.resolve([]), [studentId]);
+  const { data: attendance } = useSupabaseQuery(() => studentId ? getStudentAttendance(studentId) : Promise.resolve([]), [studentId]);
   const { data: assignments } = useSupabaseQuery(() => getAssignments());
   const { data: allBadges } = useSupabaseQuery(() => getBadges());
-  const { data: earnedBadges } = useSupabaseQuery(() => getStudentBadges(STUDENT_ID));
+  const { data: earnedBadges } = useSupabaseQuery(() => studentId ? getStudentBadges(studentId) : Promise.resolve([]), [studentId]);
   const { data: leaderboard } = useSupabaseQuery(() => getLeaderboard());
 
   const presentCount = (attendance || []).filter((a: { status: string }) => a.status === "present").length;
@@ -28,9 +30,9 @@ export default function StudentDashboard() {
 
   const myRankEntry = (leaderboard || [])
     .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
-    .findIndex((e: { student_id: string }) => e.student_id === STUDENT_ID);
+    .findIndex((e: { student_id: string }) => e.student_id === studentId);
   const myRank = myRankEntry >= 0 ? myRankEntry + 1 : 0;
-  const myLeaderboard = (leaderboard || []).find((e: { student_id: string }) => e.student_id === STUDENT_ID);
+  const myLeaderboard = (leaderboard || []).find((e: { student_id: string }) => e.student_id === studentId);
 
   const performanceData = [
     { subject: "DSA", score: 88, average: 75 },
@@ -40,9 +42,11 @@ export default function StudentDashboard() {
     { subject: "AI", score: 78, average: 68 },
   ];
 
+  const greeting = profile ? `Welcome back, ${profile.full_name.split(" ")[0]}!` : "Welcome back!";
+
   return (
     <>
-      <TopBar title="Dashboard" subtitle="Welcome back, Aarav! Here's your learning overview." />
+      <TopBar title="Dashboard" subtitle={`${greeting} Here's your learning overview.`} />
 
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

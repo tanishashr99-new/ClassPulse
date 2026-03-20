@@ -7,15 +7,17 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { AttendanceTrendChart, PerformanceAreaChart } from "@/components/charts/Charts";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getDashboardStats, getAttendanceSummary, getAIInsights, getNotifications } from "@/lib/data-service";
+import { useAuth } from "@/lib/auth-context";
 import { Users, CheckCircle, BookOpen, TrendingUp, Brain, Activity, Calendar, Sparkles } from "lucide-react";
 
 export default function AdminDashboard() {
+  const { profile } = useAuth();
   const { data: stats, loading: statsLoading } = useSupabaseQuery(() => getDashboardStats());
   const { data: attendanceData } = useSupabaseQuery(() => getAttendanceSummary());
   const { data: insights } = useSupabaseQuery(() => getAIInsights());
   const { data: notifications } = useSupabaseQuery(() =>
-    getNotifications("00000000-0000-0000-0000-000000000001")
-  );
+    profile ? getNotifications(profile.id) : Promise.resolve([])
+  , [profile?.id]);
 
   const monthlyPerf = [
     { month: "Sep", avg: 72 }, { month: "Oct", avg: 75 }, { month: "Nov", avg: 78 },
@@ -23,9 +25,11 @@ export default function AdminDashboard() {
     { month: "Mar", avg: stats?.avgPerformance || 82 },
   ];
 
+  const greeting = profile ? `Welcome back, ${profile.full_name}!` : "Welcome back!";
+
   return (
     <>
-      <TopBar title="Dashboard" subtitle="Welcome back, Prof. Verma! Here's today's overview." />
+      <TopBar title="Dashboard" subtitle={`${greeting} Here's today's overview.`} />
 
       <div className="p-6 space-y-6">
         {/* Stats */}

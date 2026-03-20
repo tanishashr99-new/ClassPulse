@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { mockTests } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import { Clock, Play, CheckCircle2, BarChart3, FileQuestion, Calendar, Timer } from "lucide-react";
 
 export default function StudentTestsPage() {
@@ -11,6 +12,16 @@ export default function StudentTestsPage() {
   const [timeLeft, setTimeLeft] = useState(1800);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [dynamicTests, setDynamicTests] = useState<any[]>([]);
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    async function loadTests() {
+      const { data } = await supabase.from('tests').select('*').order('created_at', { ascending: false });
+      if (data) setDynamicTests(data);
+    }
+    loadTests();
+  }, []);
 
   const mockQuestions = [
     {
@@ -196,64 +207,73 @@ export default function StudentTestsPage() {
 
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {mockTests.map((test, i) => (
-            <motion.div
-              key={test.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="card p-6"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className={`badge ${test.status === "completed" ? "badge-success" : "badge-primary"}`}>
-                    {test.status === "completed" ? "Completed" : "Upcoming"}
-                  </span>
-                  <h3 className="text-base font-bold mt-2" style={{ color: "var(--text-primary)" }}>
-                    {test.title}
-                  </h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-                    {test.subject}
-                  </p>
-                </div>
-                {test.status === "completed" && (
-                  <div className="text-right">
-                    <p className="text-3xl font-bold gradient-text">
-                      {test.avgScore + Math.floor(Math.random() * 10)}%
+          {dynamicTests.length > 0 ? dynamicTests.map((test: any, i: number) => {
+            const status = i === 0 ? "completed" : i === 1 ? "upcoming" : "active";
+            const score = Math.floor(Math.random() * 20) + 80;
+
+            return (
+              <motion.div
+                key={test.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="card p-6"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <span className={`badge ${status === "completed" ? "badge-success" : "badge-primary"}`}>
+                      {status === "completed" ? "Completed" : "Upcoming"}
+                    </span>
+                    <h3 className="text-base font-bold mt-2" style={{ color: "var(--text-primary)" }}>
+                      {test.title}
+                    </h3>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                      {test.subject || "Assessments"}
                     </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Your Score</p>
                   </div>
-                )}
-              </div>
+                  {status === "completed" && (
+                    <div className="text-right">
+                      <p className="text-3xl font-bold gradient-text">
+                        {score}%
+                      </p>
+                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Your Score</p>
+                    </div>
+                  )}
+                </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                  <Calendar className="w-3.5 h-3.5" /> {test.date}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
+                    <Calendar className="w-3.5 h-3.5" /> {test.start_time?.substring(0, 10) || "Next Week"}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
+                    <Clock className="w-3.5 h-3.5" /> {test.duration || 60} min
+                  </div>
+                  <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
+                    <FileQuestion className="w-3.5 h-3.5" /> {test.total_questions || 30} Qs
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                  <Clock className="w-3.5 h-3.5" /> {test.duration} min
-                </div>
-                <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                  <FileQuestion className="w-3.5 h-3.5" /> {test.questions} Qs
-                </div>
-              </div>
 
-              <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border-color)" }}>
-                {test.status === "upcoming" ? (
-                  <button
-                    onClick={() => setActiveTest(test.id)}
-                    className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 text-sm"
-                  >
-                    <Play className="w-4 h-4" /> Start Test
-                  </button>
-                ) : (
-                  <button className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
-                    <BarChart3 className="w-4 h-4" /> View Score Breakdown
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border-color)" }}>
+                  {status === "upcoming" || status === "active" ? (
+                    <button
+                      onClick={() => setActiveTest(test.id)}
+                      className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 text-sm"
+                    >
+                      <Play className="w-4 h-4" /> Start Test
+                    </button>
+                  ) : (
+                    <button className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
+                      <BarChart3 className="w-4 h-4" /> View Score Breakdown
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          }) : (
+            <div className="col-span-1 md:col-span-2 p-8 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
+              No tests are currently available in the system!
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -3,12 +3,38 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { mockLeaderboard } from "@/lib/mock-data";
 import { generateAvatarGradient } from "@/lib/utils";
 import { Trophy, TrendingUp, TrendingDown, Minus, Flame, Award } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getLeaderboard } from "@/lib/data-service";
 
 export default function StudentLeaderboardPage() {
-  const myRank = 3;
+  const { user, profile } = useAuth();
+  const studentId = user?.id || "";
+
+  const { data: leaderboardData, loading } = useSupabaseQuery(() => getLeaderboard());
+
+  // Process leaderboard data
+  const actualLeaderboard = (leaderboardData || [])
+    .sort((a, b) => b.score - a.score)
+    .map((entry, index) => {
+      // Provide a fallback if student join fails, though data-service does query profiles
+      const studentName = (entry as any).student?.full_name || "Unknown Student";
+      return {
+        id: entry.student_id,
+        rank: index + 1,
+        name: studentName,
+        avatar: studentName.substring(0, 2).toUpperCase(),
+        score: entry.score,
+        badges: entry.badges_count,
+        streak: entry.streak,
+        change: entry.rank_change // 'up', 'down', '-'
+      };
+    });
+
+  const myEntry = actualLeaderboard.find((e) => e.id === studentId);
+  const myRank = myEntry?.rank || 0;
 
   return (
     <>
@@ -24,27 +50,27 @@ export default function StudentLeaderboardPage() {
           <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: "var(--gradient-primary)" }} />
           <div className="flex items-center gap-6">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white uppercase"
               style={{ background: "var(--gradient-primary)" }}
             >
-              AS
+              {profile?.full_name ? profile.full_name.substring(0, 2) : "ME"}
             </div>
             <div>
               <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Your Rank</p>
-              <p className="text-4xl font-bold gradient-text">#{myRank}</p>
+              <p className="text-4xl font-bold gradient-text">{myRank > 0 ? `#${myRank}` : "—"}</p>
             </div>
             <div className="ml-auto grid grid-cols-3 gap-8">
               <div className="text-center">
-                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>920</p>
+                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{myEntry?.score || 0}</p>
                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Points</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>6</p>
+                <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{myEntry?.badges || 0}</p>
                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Badges</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold flex items-center justify-center gap-1" style={{ color: "var(--text-primary)" }}>
-                  <Flame className="w-5 h-5 text-orange-500" /> 12
+                  <Flame className="w-5 h-5 text-orange-500" /> {myEntry?.streak || 0}
                 </p>
                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Streak</p>
               </div>
@@ -60,11 +86,11 @@ export default function StudentLeaderboardPage() {
           className="card overflow-hidden"
         >
           <div className="divide-y" style={{ borderColor: "var(--border-color)" }}>
-            {mockLeaderboard.map((student, i) => {
-              const isMe = student.rank === myRank;
+            {actualLeaderboard.map((student, i) => {
+              const isMe = student.id === studentId;
               return (
                 <motion.div
-                  key={student.rank}
+                  key={student.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 + i * 0.05 }}
@@ -92,14 +118,14 @@ export default function StudentLeaderboardPage() {
                     {student.rank}
                   </span>
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white uppercase"
                     style={{ background: generateAvatarGradient(student.name) }}
                   >
                     {student.avatar}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {student.name} {isMe && <span className="text-blue-500 text-xs">(You)</span>}
+                      {student.name} {isMe && <span className="text-blue-500 text-xs ml-2">(You)</span>}
                     </p>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
@@ -110,7 +136,7 @@ export default function StudentLeaderboardPage() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{student.score}</p>
+                  <p className="text-lg font-bold mr-4" style={{ color: "var(--text-primary)" }}>{student.score}</p>
                   {student.change === "up" ? (
                     <TrendingUp className="w-4 h-4 text-green-500" />
                   ) : student.change === "down" ? (
@@ -121,6 +147,17 @@ export default function StudentLeaderboardPage() {
                 </motion.div>
               );
             })}
+            
+            {actualLeaderboard.length === 0 && !loading && (
+              <div className="p-8 text-center" style={{ color: "var(--text-tertiary)" }}>
+                No leaderboard data yet!
+              </div>
+            )}
+            {loading && (
+              <div className="p-8 text-center" style={{ color: "var(--text-tertiary)" }}>
+                Loading rankings...
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

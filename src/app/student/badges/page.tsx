@@ -3,25 +3,46 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { mockBadges } from "@/lib/mock-data";
-import { Award, Lock, CheckCircle2, Flame, Star, Target, BookOpen, Trophy } from "lucide-react";
+import { Award, Lock, CheckCircle2, Flame, Star, Target as TargetIcon, BookOpen, Trophy } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getBadges, getStudentBadges } from "@/lib/data-service";
 
 export default function StudentBadgesPage() {
-  const earned = mockBadges.filter((b) => b.earned).length;
-  const total = mockBadges.length;
+  const { user } = useAuth();
+  const studentId = user?.id || "";
+
+  const { data: allBadges } = useSupabaseQuery(() => getBadges());
+  const { data: earnedBadges } = useSupabaseQuery(
+    () => (studentId ? getStudentBadges(studentId) : Promise.resolve([])),
+    [studentId]
+  );
+
+  const earnedBadgeIds = new Set((earnedBadges || []).map((eb: any) => eb.badge_id));
+  
+  const formattedBadges = (allBadges || []).map((b) => ({
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    icon: b.icon,
+    earned: earnedBadgeIds.has(b.id)
+  }));
+
+  const earned = formattedBadges.filter((b) => b.earned).length;
+  const total = formattedBadges.length || 6;
 
   const categories = [
     {
       title: "Attendance",
-      badges: mockBadges.filter((_, i) => i < 2),
+      badges: formattedBadges.filter((_, i) => i < 2),
     },
     {
       title: "Performance",
-      badges: mockBadges.filter((_, i) => i >= 2 && i < 4),
+      badges: formattedBadges.filter((_, i) => i >= 2 && i < 4),
     },
     {
       title: "Milestones",
-      badges: mockBadges.filter((_, i) => i >= 4),
+      badges: formattedBadges.filter((_, i) => i >= 4),
     },
   ];
 

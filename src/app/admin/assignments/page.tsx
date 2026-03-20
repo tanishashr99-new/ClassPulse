@@ -1,115 +1,121 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { mockAssignments } from "@/lib/mock-data";
-import { FileText, Clock, Users, Plus, Upload, ChevronRight, AlertCircle, CheckCircle2, Timer } from "lucide-react";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getAssignments, getAssignmentSubmissionCounts } from "@/lib/data-service";
+import { FileText, Clock, Plus, Users } from "lucide-react";
 
 export default function AssignmentsPage() {
-  const statusConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
-    active: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)", icon: <Timer className="w-3 h-3" /> },
-    pending: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", icon: <Clock className="w-3 h-3" /> },
-    overdue: { color: "#ef4444", bg: "rgba(239,68,68,0.1)", icon: <AlertCircle className="w-3 h-3" /> },
-    completed: { color: "#10b981", bg: "rgba(16,185,129,0.1)", icon: <CheckCircle2 className="w-3 h-3" /> },
+  const { data: assignments, loading } = useSupabaseQuery(() => getAssignments());
+  const { data: subCounts } = useSupabaseQuery(() => getAssignmentSubmissionCounts());
+  const [activeTab, setActiveTab] = useState("all");
+
+  const tabs = ["all", "active", "pending", "overdue", "completed"];
+
+  const filtered = (assignments || []).filter(
+    (a) => activeTab === "all" || a.status === activeTab
+  );
+
+  const statusColors: Record<string, string> = {
+    active: "badge-primary",
+    pending: "badge-warning",
+    overdue: "badge-danger",
+    completed: "badge-success",
   };
 
   return (
     <>
-      <TopBar title="Assignments" subtitle="Create and manage assignments" />
+      <TopBar title="Assignments" subtitle="Manage assignments and submissions" />
 
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {["All", "Active", "Pending", "Overdue", "Completed"].map((tab) => (
+          <div className="flex items-center gap-2">
+            {tabs.map((tab) => (
               <button
                 key={tab}
-                className={`text-sm font-semibold pb-1 border-b-2 transition-colors ${
-                  tab === "All" ? "text-blue-500 border-blue-500" : "border-transparent"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${
+                  activeTab === tab ? "btn-primary" : "btn-secondary"
                 }`}
-                style={tab !== "All" ? { color: "var(--text-tertiary)" } : undefined}
               >
                 {tab}
               </button>
             ))}
           </div>
           <button className="btn-primary flex items-center gap-2 text-xs py-2 px-4">
-            <Plus className="w-3.5 h-3.5" />
-            New Assignment
+            <Plus className="w-3.5 h-3.5" /> New Assignment
           </button>
         </div>
 
-        <div className="space-y-4">
-          {mockAssignments.map((assignment, i) => {
-            const config = statusConfig[assignment.status];
-            const progress = Math.round((assignment.submissions / assignment.total) * 100);
-            return (
-              <motion.div
-                key={assignment.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="card p-5 flex items-center gap-5 group cursor-pointer"
-              >
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: config.bg }}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card p-6">
+                <div className="skeleton h-4 w-48 mb-2" />
+                <div className="skeleton h-3 w-32" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((assignment, i) => {
+              const subs = (subCounts || {})[assignment.id] || 0;
+              const totalStudents = 8;
+              const progress = Math.round((subs / totalStudents) * 100);
+
+              return (
+                <motion.div
+                  key={assignment.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className="card p-6"
                 >
-                  <FileText className="w-5 h-5" style={{ color: config.color }} />
-                </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                          {assignment.title}
+                        </h3>
+                        <span className={`badge text-[10px] ${statusColors[assignment.status]}`}>
+                          {assignment.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs" style={{ color: "var(--text-tertiary)" }}>
+                        <span className="badge badge-primary text-[10px]">{assignment.subject}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Due: {assignment.due_date}</span>
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {subs}/{totalStudents} submitted</span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                      {assignment.total_marks} pts
+                    </span>
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                      {assignment.title}
-                    </p>
-                    <span
-                      className="badge flex items-center gap-1"
-                      style={{ background: config.bg, color: config.color }}
-                    >
-                      {config.icon}
-                      {assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    <span>{assignment.subject}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Due: {assignment.dueDate}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {assignment.submissions}/{assignment.total} submissions
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-32 flex-shrink-0">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span style={{ color: "var(--text-tertiary)" }}>Progress</span>
-                    <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {progress}%
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)" }}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 1, delay: 0.3 + i * 0.05 }}
-                      className="h-full rounded-full"
-                      style={{ background: config.color }}
-                    />
-                  </div>
-                </div>
-
-                <ChevronRight
-                  className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: "var(--text-tertiary)" }}
-                />
-              </motion.div>
-            );
-          })}
-        </div>
+                  {assignment.status !== "completed" && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: "var(--text-tertiary)" }}>
+                        <span>Submissions</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)" }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          transition={{ duration: 1, delay: 0.3 }}
+                          className="h-full rounded-full"
+                          style={{ background: "var(--gradient-primary)" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );

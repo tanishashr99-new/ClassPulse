@@ -4,26 +4,56 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { AttendanceTrendChart, AttendanceRateChart } from "@/components/charts/Charts";
-import { mockStudents, mockAttendanceData, mockWeeklyAttendance } from "@/lib/mock-data";
-import { generateAvatarGradient, getAttendanceColor } from "@/lib/utils";
-import {
-  Camera,
-  CheckCircle,
-  XCircle,
-  Clock,
-  UserCheck,
-  UserX,
-  AlertTriangle,
-  Scan,
-  RefreshCw,
-} from "lucide-react";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getStudents, getAttendanceByDate, markAttendance, getAttendanceSummary } from "@/lib/data-service";
+import { getClasses } from "@/lib/data-service";
+import { generateAvatarGradient, getInitials } from "@/lib/utils";
+import { Camera, Users, CheckCircle2, Clock, XCircle, Save } from "lucide-react";
 
 export default function AttendancePage() {
   const [mode, setMode] = useState<"manual" | "ai">("manual");
-  const [attendance, setAttendance] = useState<Record<string, "present" | "absent" | "late">>({});
+  const [selectedClassId, setSelectedClassId] = useState("00000000-0000-0000-0000-000000000100");
+  const today = new Date().toISOString().split("T")[0];
 
-  const markAttendance = (id: string, status: "present" | "absent" | "late") => {
-    setAttendance((prev) => ({ ...prev, [id]: status }));
+  const { data: students } = useSupabaseQuery(() => getStudents());
+  const { data: classes } = useSupabaseQuery(() => getClasses());
+  const { data: existingAttendance, refetch: refetchAttendance } = useSupabaseQuery(
+    () => getAttendanceByDate(selectedClassId, today),
+    [selectedClassId]
+  );
+  const { data: chartData } = useSupabaseQuery(() => getAttendanceSummary());
+
+  const [localStatus, setLocalStatus] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  // Merge existing attendance with local state
+  const getStatus = (studentId: string) => {
+    if (localStatus[studentId]) return localStatus[studentId];
+    const existing = (existingAttendance || []).find(
+      (a: { student: { id: string } }) => a.student?.id === studentId
+    );
+    return existing?.status || null;
+  };
+
+  const handleMark = (studentId: string, status: string) => {
+    setLocalStatus((prev) => ({ ...prev, [studentId]: status }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const entries = Object.entries(localStatus);
+    for (const [studentId, status] of entries) {
+      await markAttendance(studentId, selectedClassId, today, status, mode);
+    }
+    setLocalStatus({});
+    await refetchAttendance();
+    setSaving(false);
+  };
+
+  const statusCounts = {
+    present: (students || []).filter((s) => getStatus(s.id) === "present").length,
+    late: (students || []).filter((s) => getStatus(s.id) === "late").length,
+    absent: (students || []).filter((s) => getStatus(s.id) === "absent").length,
   };
 
   return (
@@ -35,189 +65,154 @@ export default function AttendancePage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMode("manual")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               mode === "manual" ? "btn-primary" : "btn-secondary"
             }`}
           >
-            <UserCheck className="w-4 h-4" />
-            Manual Attendance
+            <Users className="w-4 h-4" /> Manual Attendance
           </button>
           <button
             onClick={() => setMode("ai")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               mode === "ai" ? "btn-primary" : "btn-secondary"
             }`}
           >
-            <Camera className="w-4 h-4" />
-            AI Face Recognition
+            <Camera className="w-4 h-4" /> AI Face Recognition
           </button>
+
+          {/* Class selector */}
+          <select
+            className="input-field ml-auto max-w-xs text-sm"
+            value={selectedClassId}
+            onChange={(e) => {
+              setSelectedClassId(e.target.value);
+              setLocalStatus({});
+            }}
+          >
+            {(classes || []).map((cls) => (
+              <option key={cls.id} value={cls.id}>{cls.code} — {cls.name}</option>
+            ))}
+          </select>
         </div>
 
-        {mode === "ai" ? (
-          /* AI Face Recognition Mode */
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="card p-6"
-            >
-              <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Camera Feed
-              </h3>
-              <div
-                className="aspect-video rounded-2xl flex flex-col items-center justify-center gap-4 border-2 border-dashed"
-                style={{
-                  borderColor: "var(--border-color)",
-                  background: "var(--bg-secondary)",
-                }}
-              >
-                <div
-                  className="w-20 h-20 rounded-3xl flex items-center justify-center"
-                  style={{ background: "var(--gradient-primary)", boxShadow: "0 8px 20px rgba(59,130,246,0.3)" }}
-                >
-                  <Scan className="w-10 h-10 text-white" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                    AI Face Recognition
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-                    Click to start webcam for automated attendance
-                  </p>
-                </div>
-                <button className="btn-primary flex items-center gap-2 text-sm">
-                  <Camera className="w-4 h-4" />
-                  Start Camera
-                </button>
+        {mode === "manual" ? (
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                  Mark Attendance — {(classes || []).find((c) => c.id === selectedClassId)?.name || ""}
+                </h3>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                </p>
               </div>
-            </motion.div>
+              <div className="flex items-center gap-4 text-xs font-semibold">
+                <span className="flex items-center gap-1 text-green-500">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {statusCounts.present}
+                </span>
+                <span className="flex items-center gap-1 text-amber-500">
+                  <Clock className="w-3.5 h-3.5" /> {statusCounts.late}
+                </span>
+                <span className="flex items-center gap-1 text-red-500">
+                  <XCircle className="w-3.5 h-3.5" /> {statusCounts.absent}
+                </span>
+              </div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="card p-6"
-            >
-              <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                Recognition Results
-              </h3>
-              <div className="space-y-3">
-                {mockStudents.slice(0, 5).map((student, i) => (
+            <div className="space-y-2">
+              {(students || []).map((student, i) => {
+                const status = getStatus(student.id);
+                return (
                   <motion.div
                     key={student.id}
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.1 }}
-                    className="flex items-center gap-3 p-3 rounded-xl border"
+                    transition={{ delay: i * 0.03 }}
+                    className="flex items-center gap-4 p-3 rounded-xl border"
                     style={{ borderColor: "var(--border-color)" }}
                   >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: generateAvatarGradient(student.name) }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: generateAvatarGradient(student.full_name) }}
                     >
-                      {student.avatar}
+                      {getInitials(student.full_name)}
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {student.name}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                        Confidence: {(90 + Math.random() * 9).toFixed(1)}%
-                      </p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{student.full_name}</p>
+                      <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
                     </div>
-                    <span className="badge badge-success">
-                      <CheckCircle className="w-3 h-3" /> Recognized
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {["present", "late", "absent"].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => handleMark(student.id, s)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            status === s
+                              ? s === "present"
+                                ? "bg-green-500 text-white"
+                                : s === "late"
+                                ? "bg-amber-500 text-white"
+                                : "bg-red-500 text-white"
+                              : ""
+                          }`}
+                          style={
+                            status !== s
+                              ? { background: "var(--bg-tertiary)", color: "var(--text-secondary)" }
+                              : undefined
+                          }
+                        >
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </button>
+                      ))}
+                    </div>
                   </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
+                );
+              })}
+            </div>
+
+            {Object.keys(localStatus).length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 flex justify-end"
+              >
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary flex items-center gap-2 py-2.5 px-6"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? "Saving..." : `Save Attendance (${Object.keys(localStatus).length} changes)`}
+                </button>
+              </motion.div>
+            )}
+          </motion.div>
         ) : (
-          /* Manual Mode */
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="card overflow-hidden"
-          >
-            <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "var(--border-color)" }}>
-              <div>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Mark Attendance — Data Structures & Algorithms
-                </h3>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                  March 21, 2026 • 9:00 AM
-                </p>
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
+            <div className="text-center">
+              <div className="w-24 h-24 rounded-3xl bg-blue-500/10 flex items-center justify-center mx-auto mb-6">
+                <Camera className="w-12 h-12 text-blue-500" />
               </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1 text-green-500">
-                  <CheckCircle className="w-3.5 h-3.5" /> {Object.values(attendance).filter((v) => v === "present").length}
-                </span>
-                <span className="flex items-center gap-1 text-amber-500">
-                  <Clock className="w-3.5 h-3.5" /> {Object.values(attendance).filter((v) => v === "late").length}
-                </span>
-                <span className="flex items-center gap-1 text-red-500">
-                  <XCircle className="w-3.5 h-3.5" /> {Object.values(attendance).filter((v) => v === "absent").length}
-                </span>
-              </div>
-            </div>
-            <div className="divide-y" style={{ borderColor: "var(--border-color)" }}>
-              {mockStudents.map((student) => (
-                <div key={student.id} className="flex items-center justify-between p-4 hover:bg-[var(--bg-secondary)] transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: generateAvatarGradient(student.name) }}
-                    >
-                      {student.avatar}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {student.name}
-                      </p>
-                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                        {student.email}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(["present", "late", "absent"] as const).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => markAttendance(student.id, status)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                          attendance[student.id] === status
-                            ? status === "present"
-                              ? "bg-green-500/10 text-green-500 border-green-500/30"
-                              : status === "late"
-                              ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
-                              : "bg-red-500/10 text-red-500 border-red-500/30"
-                            : "border-transparent"
-                        }`}
-                        style={
-                          attendance[student.id] !== status
-                            ? { color: "var(--text-tertiary)", background: "var(--bg-tertiary)" }
-                            : undefined
-                        }
-                      >
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-4 border-t flex justify-end gap-3" style={{ borderColor: "var(--border-color)" }}>
-              <button className="btn-secondary py-2 px-6 text-sm">Reset</button>
-              <button className="btn-primary py-2 px-6 text-sm">Save Attendance</button>
+              <h3 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>AI Face Recognition</h3>
+              <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+                Start the camera to automatically recognize and mark attendance using AI
+              </p>
+              <button className="btn-primary py-3 px-8">Start Camera</button>
             </div>
           </motion.div>
         )}
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AttendanceTrendChart data={mockAttendanceData} />
-          <AttendanceRateChart data={mockWeeklyAttendance} />
+          <AttendanceTrendChart data={chartData || []} />
+          <AttendanceRateChart
+            data={(chartData || []).map((d: { day: string; present: number; late: number; absent: number }) => ({
+              week: d.day,
+              rate: d.present + d.late + d.absent > 0
+                ? Math.round((d.present / (d.present + d.late + d.absent)) * 100)
+                : 0,
+            }))}
+          />
         </div>
       </div>
     </>

@@ -4,50 +4,35 @@ import React from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { StatsCard } from "@/components/dashboard/StatsCard";
-import { AttendanceTrendChart, PerformanceAreaChart, GradeDistributionChart } from "@/components/charts/Charts";
-import {
-  mockAttendanceData,
-  mockMonthlyPerformance,
-  mockActivityFeed,
-  mockAIInsights,
-  mockAssignments,
-} from "@/lib/mock-data";
-import {
-  Users,
-  ClipboardCheck,
-  BookOpen,
-  TrendingUp,
-  FileText,
-  CheckCircle,
-  UserPlus,
-  Award,
-  MessageSquare,
-  Brain,
-  AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
-} from "lucide-react";
-
-const activityIcons: Record<string, React.ReactNode> = {
-  file: <FileText className="w-3.5 h-3.5" />,
-  check: <CheckCircle className="w-3.5 h-3.5" />,
-  plus: <UserPlus className="w-3.5 h-3.5" />,
-  award: <Award className="w-3.5 h-3.5" />,
-  message: <MessageSquare className="w-3.5 h-3.5" />,
-};
+import { AttendanceTrendChart, PerformanceAreaChart } from "@/components/charts/Charts";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { getDashboardStats, getAttendanceSummary, getAIInsights, getNotifications } from "@/lib/data-service";
+import { Users, CheckCircle, BookOpen, TrendingUp, Brain, Activity, Calendar, Sparkles } from "lucide-react";
 
 export default function AdminDashboard() {
+  const { data: stats, loading: statsLoading } = useSupabaseQuery(() => getDashboardStats());
+  const { data: attendanceData } = useSupabaseQuery(() => getAttendanceSummary());
+  const { data: insights } = useSupabaseQuery(() => getAIInsights());
+  const { data: notifications } = useSupabaseQuery(() =>
+    getNotifications("00000000-0000-0000-0000-000000000001")
+  );
+
+  const monthlyPerf = [
+    { month: "Sep", score: 72 }, { month: "Oct", score: 75 }, { month: "Nov", score: 78 },
+    { month: "Dec", score: 74 }, { month: "Jan", score: 80 }, { month: "Feb", score: 83 },
+    { month: "Mar", score: stats?.avgPerformance || 82 },
+  ];
+
   return (
     <>
       <TopBar title="Dashboard" subtitle="Welcome back, Prof. Verma! Here's today's overview." />
 
       <div className="p-6 space-y-6">
-        {/* Stats Grid */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Total Students"
-            value="1,247"
+            value={statsLoading ? "..." : String(stats?.totalStudents || 0)}
             change="+12"
             changeType="positive"
             icon={<Users className="w-5 h-5 text-white" />}
@@ -55,15 +40,15 @@ export default function AdminDashboard() {
           />
           <StatsCard
             title="Today's Attendance"
-            value="94.2%"
+            value={statsLoading ? "..." : `${stats?.todayAttendance || 0}%`}
             change="+2.3%"
             changeType="positive"
-            icon={<ClipboardCheck className="w-5 h-5 text-white" />}
+            icon={<CheckCircle className="w-5 h-5 text-white" />}
             gradient="linear-gradient(135deg, #10b981, #34d399)"
           />
           <StatsCard
             title="Active Classes"
-            value="5"
+            value={statsLoading ? "..." : String(stats?.totalClasses || 0)}
             change="2 ongoing"
             changeType="neutral"
             icon={<BookOpen className="w-5 h-5 text-white" />}
@@ -71,7 +56,7 @@ export default function AdminDashboard() {
           />
           <StatsCard
             title="Avg Performance"
-            value="82.5%"
+            value={statsLoading ? "..." : `${stats?.avgPerformance || 0}%`}
             change="+5.1%"
             changeType="positive"
             icon={<TrendingUp className="w-5 h-5 text-white" />}
@@ -79,95 +64,92 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Charts Row */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AttendanceTrendChart data={mockAttendanceData} />
-          <PerformanceAreaChart data={mockMonthlyPerformance} />
+          <AttendanceTrendChart data={attendanceData || []} />
+          <PerformanceAreaChart data={monthlyPerf} />
         </div>
 
-        {/* Bottom Row */}
+        {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* AI Insights Panel */}
+          {/* AI Insights */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card p-6 lg:col-span-1"
+            transition={{ delay: 0.3 }}
+            className="card p-6"
           >
             <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--gradient-accent)" }}>
-                <Brain className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  AI Insights
-                </h3>
-                <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                  Powered by SmartCampus AI
-                </p>
-              </div>
+              <Brain className="w-5 h-5 text-purple-500" />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                AI Insights
+              </h3>
+              <Sparkles className="w-3 h-3 text-purple-400 ml-auto" />
             </div>
             <div className="space-y-3">
-              {mockAIInsights.map((insight) => (
+              {(insights || []).slice(0, 3).map((insight, i) => (
                 <div
-                  key={insight.id}
-                  className="p-3.5 rounded-xl border transition-colors hover:bg-[var(--bg-secondary)]"
+                  key={insight.id || i}
+                  className="p-3 rounded-xl border"
                   style={{ borderColor: "var(--border-color)" }}
                 >
-                  <div className="flex items-start justify-between mb-1.5">
-                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
                       {insight.title}
-                    </p>
+                    </span>
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      className={`text-xs font-bold ${
                         insight.type === "positive"
-                          ? "bg-green-500/10 text-green-500"
+                          ? "text-green-500"
                           : insight.type === "warning"
-                          ? "bg-amber-500/10 text-amber-500"
-                          : "bg-red-500/10 text-red-500"
+                          ? "text-amber-500"
+                          : "text-red-500"
                       }`}
                     >
                       {insight.metric}
                     </span>
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {insight.insight}
+                  <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
+                    {insight.insight.slice(0, 80)}...
                   </p>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          {/* Activity Feed */}
+          {/* Recent Activity */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.4 }}
             className="card p-6"
           >
-            <h3 className="text-sm font-semibold mb-5" style={{ color: "var(--text-primary)" }}>
-              Recent Activity
-            </h3>
-            <div className="space-y-4">
-              {mockActivityFeed.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
+            <div className="flex items-center gap-2 mb-5">
+              <Activity className="w-5 h-5 text-blue-500" />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                Recent Activity
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {(notifications || []).slice(0, 4).map((notif, i) => (
+                <div key={notif.id || i} className="flex items-start gap-3">
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
-                  >
-                    {activityIcons[activity.icon]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                      <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {activity.user}
-                      </span>{" "}
-                      {activity.action}{" "}
-                      <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {activity.target}
-                      </span>
+                    className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                      notif.type === "success"
+                        ? "bg-green-500"
+                        : notif.type === "warning"
+                        ? "bg-amber-500"
+                        : notif.type === "alert"
+                        ? "bg-red-500"
+                        : "bg-blue-500"
+                    }`}
+                  />
+                  <div>
+                    <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                      {notif.title}
                     </p>
-                    <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-                      {activity.time}
+                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                      {notif.message}
                     </p>
                   </div>
                 </div>
@@ -179,59 +161,43 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.5 }}
             className="card p-6"
           >
-            <h3 className="text-sm font-semibold mb-5" style={{ color: "var(--text-primary)" }}>
-              Upcoming Deadlines
-            </h3>
+            <div className="flex items-center gap-2 mb-5">
+              <Calendar className="w-5 h-5 text-orange-500" />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                Upcoming Deadlines
+              </h3>
+            </div>
             <div className="space-y-3">
-              {mockAssignments
-                .filter((a) => a.status !== "completed")
-                .map((assignment) => (
-                  <div
-                    key={assignment.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border transition-colors hover:bg-[var(--bg-secondary)]"
-                    style={{ borderColor: "var(--border-color)" }}
-                  >
-                    <div
-                      className="w-1.5 h-10 rounded-full flex-shrink-0"
-                      style={{
-                        background:
-                          assignment.status === "overdue"
-                            ? "#ef4444"
-                            : assignment.status === "pending"
-                            ? "#f59e0b"
-                            : "#3b82f6",
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                        {assignment.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                          {assignment.subject}
-                        </span>
-                        <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                          •
-                        </span>
-                        <span className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
-                          <Clock className="w-3 h-3" />
-                          {assignment.dueDate}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {assignment.submissions}/{assignment.total}
-                      </p>
-                      <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                        submitted
-                      </p>
-                    </div>
+              {[
+                { title: "BST Implementation Due", date: "Mar 25", tag: "DSA" },
+                { title: "SQL Mastery Quiz", date: "Mar 25", tag: "DBMS" },
+                { title: "SQL Query Optimization", date: "Mar 28", tag: "DBMS" },
+                { title: "React Assessment", date: "Mar 28", tag: "Web" },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-2.5 rounded-xl"
+                  style={{ background: "var(--bg-secondary)" }}
+                >
+                  <div className="text-center min-w-[40px]">
+                    <p className="text-[10px] font-bold text-blue-500">
+                      {item.date.split(" ")[0]}
+                    </p>
+                    <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                      {item.date.split(" ")[1]}
+                    </p>
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                      {item.title}
+                    </p>
+                  </div>
+                  <span className="badge badge-primary text-[10px]">{item.tag}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>

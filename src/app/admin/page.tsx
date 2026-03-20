@@ -18,9 +18,9 @@ export default function AdminDashboard() {
   );
 
   const monthlyPerf = [
-    { month: "Sep", score: 72 }, { month: "Oct", score: 75 }, { month: "Nov", score: 78 },
-    { month: "Dec", score: 74 }, { month: "Jan", score: 80 }, { month: "Feb", score: 83 },
-    { month: "Mar", score: stats?.avgPerformance || 82 },
+    { month: "Sep", avg: 72 }, { month: "Oct", avg: 75 }, { month: "Nov", avg: 78 },
+    { month: "Dec", avg: 74 }, { month: "Jan", avg: 80 }, { month: "Feb", avg: 83 },
+    { month: "Mar", avg: stats?.avgPerformance || 82 },
   ];
 
   return (

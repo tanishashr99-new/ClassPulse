@@ -33,11 +33,11 @@ export default function StudentDashboard() {
   const myLeaderboard = (leaderboard || []).find((e: { student_id: string }) => e.student_id === STUDENT_ID);
 
   const performanceData = [
-    { subject: "DSA", score: 88 },
-    { subject: "ML", score: 82 },
-    { subject: "DBMS", score: 90 },
-    { subject: "Web Dev", score: 85 },
-    { subject: "AI", score: 78 },
+    { subject: "DSA", score: 88, average: 75 },
+    { subject: "ML", score: 82, average: 70 },
+    { subject: "DBMS", score: 90, average: 78 },
+    { subject: "Web Dev", score: 85, average: 72 },
+    { subject: "AI", score: 78, average: 68 },
   ];
 
   return (

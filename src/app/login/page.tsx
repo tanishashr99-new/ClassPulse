@@ -63,22 +63,30 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex" style={{ background: "var(--bg-primary)" }}>
       {/* Left Panel — Branding */}
-      <div
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 bg-cover bg-center"
-        style={{
-          background:
-            selectedRole === "teacher"
-              ? "linear-gradient(135deg, #3b82f6, #6d28d9)"
-              : selectedRole === "student"
-              ? "linear-gradient(135deg, rgba(8, 145, 178, 0.7), rgba(30, 58, 138, 0.8)), url('/Gemini_Generated_Image_5x1qit5x1qit5x1q.png')"
-              : "var(--gradient-primary)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          transition: "background 0.5s ease",
-        }}
-      >
-        <div className="floating-orb w-96 h-96 bg-white/20 -top-32 -left-32" />
-        <div className="floating-orb w-80 h-80 bg-white/10 bottom-0 right-0" style={{ animationDelay: "4s" }} />
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12">
+        
+        {/* Dynamic Image Layer for Student Portal */}
+        <div 
+          className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-700 \${selectedRole === "student" ? "opacity-100" : "opacity-0"}`}
+          style={{ backgroundImage: "url('/Gemini_Generated_Image_5x1qit5x1qit5x1q.png')" }}
+        />
+
+        {/* Dynamic Gradient Overlay */}
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            background:
+              selectedRole === "teacher"
+                ? "linear-gradient(135deg, #3b82f6, #6d28d9)"
+                : selectedRole === "student"
+                ? "linear-gradient(135deg, rgba(8, 145, 178, 0.65), rgba(30, 58, 138, 0.85))"
+                : "var(--gradient-primary)",
+            transition: "background 0.5s ease",
+          }}
+        />
+
+        <div className="floating-orb w-96 h-96 bg-white/20 -top-32 -left-32 z-0" />
+        <div className="floating-orb w-80 h-80 bg-white/10 bottom-0 right-0 z-0" style={{ animationDelay: "4s" }} />
 
         <AnimatePresence mode="wait">
           <motion.div

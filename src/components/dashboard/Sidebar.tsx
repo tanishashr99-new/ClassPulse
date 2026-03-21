@@ -21,6 +21,11 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
+  Activity,
+  Lightbulb,
+  Map,
+  MessageSquare,
+  ScrollText
 } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 
@@ -47,7 +52,11 @@ const studentLinks = [
   { href: "/student/attendance", label: "Attendance", icon: CalendarDays },
   { href: "/student/assignments", label: "Assignments", icon: FileText },
   { href: "/student/tests", label: "Tests", icon: GraduationCap },
-  { href: "/student/performance", label: "Performance", icon: BarChart3 },
+  { href: "/student/exams", label: "Exams", icon: ScrollText },
+  { href: "/student/analytics", label: "Analytics", icon: Activity },
+  { href: "/student/recommendations", label: "Recommendations", icon: Lightbulb },
+  { href: "/student/roadmap", label: "Roadmap", icon: Map },
+  { href: "/student/proctor", label: "Mentorship", icon: MessageSquare },
   { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/student/badges", label: "Badges", icon: Award },
 ];

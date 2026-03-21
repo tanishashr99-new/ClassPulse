@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
@@ -8,6 +9,7 @@ import { getAssignments } from "@/lib/data-service";
 import { FileText, Clock, Upload, CheckCircle2, AlertCircle, Timer, ChevronRight } from "lucide-react";
 
 export default function StudentAssignmentsPage() {
+  const router = useRouter();
   const { data: assignments, loading } = useSupabaseQuery(() => getAssignments());
   const actualAssignments = assignments || [];
 
@@ -46,6 +48,7 @@ export default function StudentAssignmentsPage() {
             return (
               <motion.div
                 key={assignment.id}
+                onClick={() => router.push(`/student/assignments/\${isCompleted ? assignment.id : 'pending'}`)}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
@@ -53,7 +56,7 @@ export default function StudentAssignmentsPage() {
               >
                 <div className="flex items-start gap-4">
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 \${
                       isCompleted
                         ? "bg-green-500/10"
                         : isOverdue

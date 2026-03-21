@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Clock, Play, CheckCircle2, BarChart3, FileQuestion, Calendar, Timer } from "lucide-react";
@@ -10,6 +11,7 @@ import { Clock, Play, CheckCircle2, BarChart3, FileQuestion, Calendar, Timer } f
 export default function StudentTestsPage() {
   const [activeTest, setActiveTest] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(1800);
+  const router = useRouter();
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [dynamicTests, setDynamicTests] = useState<any[]>([]);
@@ -262,7 +264,7 @@ export default function StudentTestsPage() {
                       <Play className="w-4 h-4" /> Start Test
                     </button>
                   ) : (
-                    <button className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
+                    <button onClick={() => router.push(`/student/tests/\${test.id}`)} className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
                       <BarChart3 className="w-4 h-4" /> View Score Breakdown
                     </button>
                   )}

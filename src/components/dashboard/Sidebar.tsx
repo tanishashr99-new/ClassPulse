@@ -45,6 +45,7 @@ const adminLinks = [
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/admin/ai-insights", label: "AI Insights", icon: Brain },
+  { href: "/admin/proctor", label: "Proctor Reviews", icon: MessageSquare },
 ];
 
 const studentLinks = [

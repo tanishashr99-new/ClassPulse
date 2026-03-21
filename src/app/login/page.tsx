@@ -64,14 +64,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex" style={{ background: "var(--bg-primary)" }}>
       {/* Left Panel — Branding */}
       <div
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12"
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12 bg-cover bg-center"
         style={{
           background:
             selectedRole === "teacher"
               ? "linear-gradient(135deg, #3b82f6, #6d28d9)"
               : selectedRole === "student"
-              ? "linear-gradient(135deg, #10b981, #3b82f6)"
+              ? "linear-gradient(135deg, rgba(8, 145, 178, 0.7), rgba(30, 58, 138, 0.8)), url('/Gemini_Generated_Image_5x1qit5x1qit5x1q.png')"
               : "var(--gradient-primary)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           transition: "background 0.5s ease",
         }}
       >

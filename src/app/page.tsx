@@ -169,9 +169,15 @@ export default function LandingPage() {
               SmartCampus <span className="gradient-text">AI</span>
             </span>
           </Link>
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
             <a href="#features" className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: "var(--text-secondary)" }}>
               Features
+            </a>
+            <a href="#preview" className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: "var(--text-secondary)" }}>
+              Dashboards
+            </a>
+            <a href="#features" className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: "var(--text-secondary)" }}>
+              AI Tracking
             </a>
             <a href="#testimonials" className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: "var(--text-secondary)" }}>
               Testimonials
@@ -237,40 +243,22 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Link
-                href="/admin"
+                href="/teacher"
                 className="btn-primary px-8 py-3 text-base flex items-center gap-2"
               >
-                Admin Demo
+                Teacher
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/student"
                 className="btn-secondary px-8 py-3 text-base flex items-center gap-2"
               >
-                Student Demo
+                Student
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </motion.div>
           </div>
 
-          {/* Stats bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-20 glass-card p-8 max-w-3xl mx-auto"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {stats.map((stat, i) => (
-                <div key={i} className="text-center">
-                  <div className="text-3xl font-bold gradient-text">{stat.value}</div>
-                  <div className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
         </div>
       </section>
 
@@ -322,7 +310,7 @@ export default function LandingPage() {
       </section>
 
       {/* Demo Preview Section */}
-      <section className="py-24" style={{ background: "var(--bg-secondary)" }}>
+      <section id="preview" className="py-24" style={{ background: "var(--bg-secondary)" }}>
         <div className="max-w-7xl mx-auto px-6">
           <motion.div {...fadeUp} className="text-center mb-16">
             <span className="text-sm font-bold uppercase tracking-widest gradient-text">Live Preview</span>

@@ -38,7 +38,10 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const loginEmail = selectedRole === "teacher" ? `${email.toLowerCase().replace(/\s+/g, '')}@smartcampus.edu` : email;
+    // Map 'T1' -> 'teacher_auth_t1@smart.edu' to bypass any previous corrupted database rows!
+    const loginEmail = selectedRole === "teacher" 
+      ? `teacher_auth_${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@smart.edu` 
+      : email;
 
     try {
       if (isLogin) {

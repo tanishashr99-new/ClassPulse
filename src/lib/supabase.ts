@@ -7,6 +7,19 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholde
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Helper: fetch with timeout
+export async function fetchWithTimeout<T>(
+  query: Promise<{ data: T | null; error: any }>,
+  timeoutMs = 5000
+): Promise<T | null> {
+  const timeout = new Promise<null>((resolve) => 
+    setTimeout(() => resolve(null), timeoutMs)
+  )
+  const result = await Promise.race([query, timeout])
+  if (!result) return null
+  return (result as any).data
+}
+
 // ── Database Types ──
 export interface Profile {
   id: string;

@@ -11,14 +11,28 @@ function CallbackHandler() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const role = searchParams.get("role") || "student";
+      // Get role from query params OR localStorage fallback
+      let role = searchParams.get("role");
+      
+      if (!role && typeof window !== "undefined") {
+        role = localStorage.getItem("intended_role");
+      }
+      
+      role = role || "student";
 
       // Supabase handles the token exchange automatically via the URL hash
       const { data: { session }, error } = await supabase.auth.getSession();
+      console.log("Auth Callback - Session:", !!session, "Error:", error);
 
       if (error || !session) {
+        console.warn("Auth Callback - Redirecting to login due to missing session");
         router.push("/login");
         return;
+      }
+
+      // Clear storage after successful session retrieval
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("intended_role");
       }
 
       // Ensure profile exists
@@ -27,10 +41,12 @@ function CallbackHandler() {
         .select("id, role")
         .eq("id", session.user.id)
         .single();
+      console.log("Auth Callback - Profile:", existingProfile);
 
       if (!existingProfile) {
+        console.log("Auth Callback - Creating new profile for role:", role);
         // Create profile for first-time Google login
-        await supabase.from("profiles").insert({
+        const { error: insertError } = await supabase.from("profiles").insert({
           id: session.user.id,
           email: session.user.email || "",
           full_name:
@@ -38,19 +54,29 @@ function CallbackHandler() {
             session.user.user_metadata?.name ||
             session.user.email?.split("@")[0] ||
             "User",
-          role: role === "admin" ? "admin" : "student",
+          role: role === "admin" ? "admin" : "student", // use the fallback role
           avatar_url: session.user.user_metadata?.avatar_url || null,
         });
 
+        if (insertError) {
+          console.error("Auth Callback - Profile creation failed:", insertError);
+          // Fallback to student dashboard if creation fails but we have a session
+          router.push("/student");
+          return;
+        }
+
         // Route based on selected role
-        router.push(role === "admin" ? "/admin" : "/student");
+        const dest = role === "admin" ? "/admin" : "/student";
+        console.log("Auth Callback - New user redirecting to:", dest);
+        router.push(dest);
       } else {
         // Route based on existing profile role
-        router.push(
+        const dest = 
           existingProfile.role === "admin" || existingProfile.role === "teacher"
             ? "/admin"
-            : "/student"
-        );
+            : "/student";
+        console.log("Auth Callback - Existing user redirecting to:", dest);
+        router.push(dest);
       }
     };
 

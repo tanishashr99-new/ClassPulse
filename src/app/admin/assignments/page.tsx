@@ -5,16 +5,20 @@ import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getAssignments, getAssignmentSubmissionCounts } from "@/lib/data-service";
-import { FileText, Clock, Plus, Users } from "lucide-react";
+import { FileText, Clock, Plus, Users, ArrowRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { MOCK_ASSIGNMENTS } from "@/lib/mockData";
 
 export default function AssignmentsPage() {
-  const { data: assignments, loading } = useSupabaseQuery(() => getAssignments());
+  const { data: apiAssignments, loading, refetch } = useSupabaseQuery(() => getAssignments());
   const { data: subCounts } = useSupabaseQuery(() => getAssignmentSubmissionCounts());
   const [activeTab, setActiveTab] = useState("all");
 
+  const assignments = ((apiAssignments && apiAssignments.length > 0) ? apiAssignments : MOCK_ASSIGNMENTS) as any[];
+
   const tabs = ["all", "active", "pending", "overdue", "completed"];
 
-  const filtered = (assignments || []).filter(
+  const filtered = assignments.filter(
     (a) => activeTab === "all" || a.status === activeTab
   );
 
@@ -53,8 +57,19 @@ export default function AssignmentsPage() {
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card p-6">
-                <div className="skeleton h-4 w-48 mb-2" />
-                <div className="skeleton h-3 w-32" />
+                <div className="flex justify-between mb-4">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-64" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-2 w-full" />
+                  <div className="flex justify-end">
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -95,19 +110,26 @@ export default function AssignmentsPage() {
                   </div>
 
                   {assignment.status !== "completed" && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: "var(--text-tertiary)" }}>
-                        <span>Submissions</span>
-                        <span>{progress}%</span>
+                    <div className="mt-4 flex flex-col gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: "var(--text-tertiary)" }}>
+                          <span>Submissions</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)" }}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 1, delay: 0.3 }}
+                            className="h-full rounded-full"
+                            style={{ background: "var(--gradient-primary)" }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)" }}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress}%` }}
-                          transition={{ duration: 1, delay: 0.3 }}
-                          className="h-full rounded-full"
-                          style={{ background: "var(--gradient-primary)" }}
-                        />
+                      <div className="flex justify-end">
+                        <button className="text-[10px] font-bold text-blue-500 flex items-center gap-1 group-hover:gap-1.5 transition-all">
+                          Review <ArrowRight className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   )}

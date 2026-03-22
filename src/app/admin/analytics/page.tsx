@@ -11,10 +11,13 @@ import {
   AttendanceRateChart,
   SubjectRadarChart,
 } from "@/components/charts/Charts";
+import { ChartSkeleton } from "@/components/ui/Skeleton";
 
 export default function AnalyticsPage() {
-  const { data: attendanceData } = useSupabaseQuery(() => getAttendanceSummary());
-  const { data: stats } = useSupabaseQuery(() => getDashboardStats());
+  const { data: attendanceData, loading: attendLoading } = useSupabaseQuery(() => getAttendanceSummary());
+  const { data: stats, loading: statsLoading } = useSupabaseQuery(() => getDashboardStats());
+
+  const loading = attendLoading || statsLoading;
 
   const dynamicMonthlyPerformance = [
     { month: "Sep", avg: 72 }, { month: "Oct", avg: 75 },
@@ -43,15 +46,31 @@ export default function AnalyticsPage() {
       <TopBar title="Analytics" subtitle="Comprehensive performance and attendance analytics" />
 
       <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AttendanceTrendChart data={attendanceData || []} />
-          <PerformanceAreaChart data={dynamicMonthlyPerformance} />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <GradeDistributionChart />
-          <AttendanceRateChart data={dynamicWeeklyAttendance} />
-          <SubjectRadarChart data={dynamicPerformanceData} />
-        </div>
+        {loading ? (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartSkeleton />
+              <ChartSkeleton />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <ChartSkeleton />
+              <ChartSkeleton />
+              <ChartSkeleton />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <AttendanceTrendChart data={attendanceData || []} />
+              <PerformanceAreaChart data={dynamicMonthlyPerformance} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <GradeDistributionChart />
+              <AttendanceRateChart data={dynamicWeeklyAttendance} />
+              <SubjectRadarChart data={dynamicPerformanceData} />
+            </div>
+          </>
+        )}
       </div>
     </>
   );

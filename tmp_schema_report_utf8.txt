@@ -1,0 +1,8 @@
+
+--- SCHEMA REPORT ---
+Table 'attendance': EXISTS. Columns: EMPTY (ID ok)
+Table 'attendance_records': MISSING or ERROR (Could not find the table 'public.attendance_records' in the schema cache)
+Table 'classes': EXISTS. Columns: EMPTY (ID ok)
+Table 'subjects': MISSING or ERROR (Could not find the table 'public.subjects' in the schema cache)
+Table 'enrollments': EXISTS. Columns: EMPTY (ID ok)
+Table 'profiles': EXISTS. Columns: id, email, full_name, role, avatar_url, department, student_id, created_at

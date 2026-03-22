@@ -7,13 +7,36 @@ import type {
 
 // ── PROFILES ──
 export async function getStudents() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("role", "student")
-    .order("full_name");
-  if (error) throw error;
-  return data as Profile[];
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/students", {
+      headers: {
+        'Authorization': `Bearer ${session?.access_token}`
+      }
+    });
+    if (!res.ok) throw new Error("Failed to fetch students from API");
+    
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid content type for students");
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error("getStudents API error, falling back to Supabase:", err);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", "student")
+        .order("full_name");
+      if (error) throw error;
+      return data as Profile[];
+    } catch (sbErr) {
+      console.error("Supabase fallback failed for students:", sbErr);
+      return []; // Prevent infinite loading
+    }
+  }
 }
 
 export async function getProfile(id: string) {
@@ -287,12 +310,41 @@ export async function getAIInsights() {
 
 // ── LEADERBOARD ──
 export async function getLeaderboard() {
-  const { data, error } = await supabase
-    .from("leaderboard")
-    .select("*, student:profiles!student_id(id, full_name, email, avatar_url)")
-    .order("score", { ascending: false });
-  if (error) throw error;
-  return data;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const res = await fetch("/api/leaderboard", { headers });
+
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Invalid content type: expected JSON");
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error("Leaderboard client fetch error:", err);
+    // Fallback to direct supabase if API fails (but this might still be client-side)
+    try {
+      const { data, error } = await supabase
+        .from("leaderboard")
+        .select("*, student:profiles!student_id(id, full_name, email, avatar_url)")
+        .order("score", { ascending: false });
+      if (error) throw error;
+      return data;
+    } catch (sbErr) {
+      console.error("Supabase fallback failed:", sbErr);
+      return []; // Return empty array to prevent infinite loading
+    }
+  }
 }
 
 // ── DASHBOARD STATS ──

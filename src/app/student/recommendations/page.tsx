@@ -28,7 +28,7 @@ export default function RecommendationsPage() {
     },
     {
       type: "attendance",
-      title: "Attendance Warning Warning",
+      title: "Attendance Warning",
       description: "Your attendance in Morning Lectures has dropped to 82%. Try to attend the next 3 sessions to stabilize your grade.",
       icon: Brain,
       color: "text-amber-500",

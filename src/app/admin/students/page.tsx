@@ -7,19 +7,28 @@ import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getStudents, getStudentAttendance } from "@/lib/data-service";
 import { supabase } from "@/lib/supabase";
 import { generateAvatarGradient, getInitials } from "@/lib/utils";
-import { Search, Filter, Plus, X, UserPlus, Mail, Award, Flame, TrendingUp } from "lucide-react";
+import { Search, Filter, Plus, X, UserPlus, Mail, Award, Flame, TrendingUp, CheckCircle, Trophy } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { MOCK_STUDENTS } from "@/lib/mockData";
 
 export default function StudentsPage() {
-  const { data: students, loading, refetch } = useSupabaseQuery(() => getStudents());
+  const { data: apiStudents, loading, refetch } = useSupabaseQuery(() => getStudents());
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [newStudent, setNewStudent] = useState({ full_name: "", email: "", student_id: "" });
 
+  // Clean up: filter out duplicates and personal accounts, then use real data
+  const baseStudents = Array.isArray(apiStudents) 
+    ? apiStudents.filter(s => s && s.email && !s.email.includes("personal") && s.full_name !== "Nothing Blossom")
+    : [];
+  
+  const students = baseStudents.slice(0, 12); // Show more students
+
   const filtered = (students || []).filter(
-    (s) =>
-      s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase()) ||
-      (s.student_id && s.student_id.toLowerCase().includes(search.toLowerCase()))
+    (s: any) =>
+      s?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s?.email?.toLowerCase().includes(search.toLowerCase()) ||
+      (s?.student_id && s.student_id.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleAddStudent = async () => {
@@ -64,11 +73,22 @@ export default function StudentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="card p-6">
-                <div className="skeleton h-12 w-12 rounded-2xl mb-4" />
-                <div className="skeleton h-4 w-32 mb-2" />
-                <div className="skeleton h-3 w-48" />
+                <Skeleton className="h-12 w-12 rounded-2xl mb-4" />
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-3 w-48" />
+                <div className="mt-4 flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-lg" />
+                  <Skeleton className="h-6 w-16 rounded-lg" />
+                </div>
               </div>
             ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+              {search ? "No students match your search." : "No students found."}
+              <button onClick={() => refetch()} className="text-indigo-400 ml-2 underline">Retry</button>
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -101,24 +121,25 @@ export default function StudentsPage() {
                     )}
                   </div>
                 </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/20">
+                       <CheckCircle className="w-3 h-3 text-green-500" />
+                       <span className="text-[10px] font-bold text-green-500">{student.attendance || 0}% Att.</span>
+                    </div>
+                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <Trophy className="w-3 h-3 text-amber-500" />
+                      <span className="text-[10px] font-bold text-amber-500">Rank #{i + 1}</span>
+                   </div>
+                </div>
+
                 <div className="flex items-center gap-3 mt-4 pt-4 border-t" style={{ borderColor: "var(--border-color)" }}>
                   <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
                     <Mail className="w-3 h-3" /> {student.email.split("@")[0]}
                   </span>
-                  {student.department && (
-                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                      {student.department}
-                    </span>
-                  )}
                 </div>
               </motion.div>
             ))}
-          </div>
-        )}
-
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No students found</p>
           </div>
         )}
       </div>

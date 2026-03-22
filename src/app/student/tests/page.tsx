@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useRouter } from "next/navigation";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import { Clock, Play, CheckCircle2, BarChart3, FileQuestion, Calendar, Timer } from "lucide-react";
+import { Clock, Play, CheckCircle2, BarChart3, FileQuestion, Calendar, Timer, ArrowRight } from "lucide-react";
+import { MOCK_TESTS } from "@/lib/mockData";
 
 export default function StudentTestsPage() {
   const [activeTest, setActiveTest] = useState<string | null>(null);
@@ -14,16 +16,10 @@ export default function StudentTestsPage() {
   const router = useRouter();
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [dynamicTests, setDynamicTests] = useState<any[]>([]);
   const { user } = useAuth();
   
-  useEffect(() => {
-    async function loadTests() {
-      const { data } = await supabase.from('tests').select('*').order('created_at', { ascending: false });
-      if (data) setDynamicTests(data);
-    }
-    loadTests();
-  }, []);
+  const { data: apiTests } = useSupabaseQuery(() => supabase.from('tests').select('*').order('created_at', { ascending: false }) as any);
+  const tests = (apiTests && (apiTests as any).length > 0) ? (apiTests as any[]) : MOCK_TESTS;
 
   const mockQuestions = [
     {
@@ -209,9 +205,9 @@ export default function StudentTestsPage() {
 
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {dynamicTests.length > 0 ? dynamicTests.map((test: any, i: number) => {
-            const status = i === 0 ? "completed" : i === 1 ? "upcoming" : "active";
-            const score = Math.floor(Math.random() * 20) + 80;
+          {tests.map((test: any, i: number) => {
+            const status = test.status || (i === 0 ? "completed" : "upcoming");
+            const score = test.score || (Math.floor(Math.random() * 20) + 80);
 
             return (
               <motion.div
@@ -245,13 +241,13 @@ export default function StudentTestsPage() {
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                    <Calendar className="w-3.5 h-3.5" /> {test.start_time?.substring(0, 10) || "Next Week"}
+                    <Calendar className="w-3.5 h-3.5" /> {test.date || test.start_time?.substring(0, 10) || "Next Week"}
                   </div>
                   <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
                     <Clock className="w-3.5 h-3.5" /> {test.duration || 60} min
                   </div>
                   <div className="flex items-center gap-2 text-xs p-2.5 rounded-xl" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                    <FileQuestion className="w-3.5 h-3.5" /> {test.total_questions || 30} Qs
+                    <FileQuestion className="w-3.5 h-3.5" /> {test.questionCount || test.total_questions || 30} Qs
                   </div>
                 </div>
 
@@ -261,21 +257,17 @@ export default function StudentTestsPage() {
                       onClick={() => setActiveTest(test.id)}
                       className="w-full btn-primary flex items-center justify-center gap-2 py-2.5 text-sm"
                     >
-                      <Play className="w-4 h-4" /> Start Test
+                      Prepare <ArrowRight className="w-4 h-4" />
                     </button>
                   ) : (
-                    <button onClick={() => router.push(`/student/tests/\${test.id}`)} className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
+                    <button onClick={() => router.push(`/student/tests/${test.id}`)} className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5 text-sm">
                       <BarChart3 className="w-4 h-4" /> View Score Breakdown
                     </button>
                   )}
                 </div>
               </motion.div>
             );
-          }) : (
-            <div className="col-span-1 md:col-span-2 p-8 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-              No tests are currently available in the system!
-            </div>
-          )}
+          })}
         </div>
       </div>
     </>

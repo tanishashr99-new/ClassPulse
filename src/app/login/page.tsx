@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [department, setDepartment] = useState("Computer Science");
   const [studentId, setStudentId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
@@ -42,7 +43,15 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         const { error: err } = await signInWithEmail(loginEmail, password);
-        if (err) { setError(err); setLoading(false); return; }
+        if (err) {
+          if (err.includes("Email not confirmed")) {
+            setError("Your email is not confirmed. Please check your inbox for a confirmation link.");
+          } else {
+            setError(err);
+          }
+          setLoading(false);
+          return;
+        }
         // Redirect based on role selection
         router.push(selectedRole === "teacher" ? "/teacher" : "/student");
       } else {
@@ -51,10 +60,16 @@ export default function LoginPage() {
         if (selectedRole === "teacher") extra.department = department;
         if (selectedRole === "student") extra.student_id = studentId;
 
-        const { error: err } = await signUpWithEmail(loginEmail, password, fullName, role, extra);
+        const { error: err, confirmationRequired } = await signUpWithEmail(loginEmail, password, fullName, role, extra);
         if (err) { setError(err); setLoading(false); return; }
-        // After signup, redirect
-        router.push(selectedRole === "teacher" ? "/teacher" : "/student");
+
+        if (confirmationRequired) {
+          setSuccess("Account created! Please check your email to confirm your account before signing in.");
+          setIsLogin(true);
+        } else {
+          // After signup, redirect if auto-confirmed
+          router.push(selectedRole === "teacher" ? "/teacher" : "/student");
+        }
       }
     } catch {
       setError("An unexpected error occurred");
@@ -227,7 +242,7 @@ export default function LoginPage() {
           ) : (
             <motion.div key="login-form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35 }} className="w-full max-w-md">
               <button
-                onClick={() => { setSelectedRole(null); setIsLogin(true); setEmail(""); setPassword(""); setFullName(""); setError(null); }}
+                onClick={() => { setSelectedRole(null); setIsLogin(true); setEmail(""); setPassword(""); setFullName(""); setError(null); setSuccess(null); }}
                 className="flex items-center gap-2 mb-6 text-sm font-medium transition-colors hover:opacity-80"
                 style={{ color: "var(--text-secondary)" }}
               >
@@ -257,6 +272,13 @@ export default function LoginPage() {
               {error && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
                   <p className="text-xs text-red-500 font-medium">{error}</p>
+                </motion.div>
+              )}
+
+              {/* Success message */}
+              {success && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                  <p className="text-xs text-green-600 font-medium">{success}</p>
                 </motion.div>
               )}
 

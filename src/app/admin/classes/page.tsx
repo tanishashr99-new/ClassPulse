@@ -1,15 +1,19 @@
-"use client";
+            "use client";
 
 import React from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getClasses, getClassStudentCounts } from "@/lib/data-service";
-import { Users, Clock, Plus } from "lucide-react";
+import { Users, Clock, Plus, ArrowRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { MOCK_CLASSES } from "@/lib/mockData";
 
 export default function ClassesPage() {
-  const { data: classes, loading } = useSupabaseQuery(() => getClasses());
+  const { data: apiClasses, loading, refetch } = useSupabaseQuery(() => getClasses());
   const { data: studentCounts } = useSupabaseQuery(() => getClassStudentCounts());
+
+  const classes = ((apiClasses && apiClasses.length > 0) ? apiClasses : MOCK_CLASSES) as any[];
 
   return (
     <>
@@ -18,7 +22,7 @@ export default function ClassesPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-            All Classes ({(classes || []).length})
+            All Classes ({classes.length})
           </h2>
           <button className="btn-primary flex items-center gap-2 text-xs py-2 px-4">
             <Plus className="w-3.5 h-3.5" /> Create Class
@@ -29,15 +33,19 @@ export default function ClassesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card p-6">
-                <div className="skeleton h-4 w-16 mb-3" />
-                <div className="skeleton h-5 w-48 mb-2" />
-                <div className="skeleton h-3 w-32" />
+                <Skeleton className="h-4 w-16 mb-3" />
+                <Skeleton className="h-5 w-48 mb-2" />
+                <Skeleton className="h-3 w-32 mb-4" />
+                <div className="flex gap-4 pt-4 border-t" style={{ borderColor: "var(--border-color)" }}>
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(classes || []).map((cls, i) => (
+            {classes.map((cls, i) => (
               <motion.div
                 key={cls.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -69,7 +77,7 @@ export default function ClassesPage() {
                 <div className="flex items-center gap-4 text-xs pt-4 border-t" style={{ borderColor: "var(--border-color)", color: "var(--text-secondary)" }}>
                   <span className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
-                    {(studentCounts || {})[cls.id] || 0} students
+                    {typeof cls.students === 'number' ? cls.students : ((studentCounts || {})[cls.id] || 0)} students
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
@@ -77,11 +85,16 @@ export default function ClassesPage() {
                   </span>
                 </div>
 
-                {cls.teacher && (
-                  <p className="text-[10px] mt-3" style={{ color: "var(--text-tertiary)" }}>
-                    Instructor: {cls.teacher.full_name}
-                  </p>
-                )}
+                <div className="mt-4 flex items-center justify-between">
+                  {cls.teacher && (
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                      Instructor: {cls.teacher.full_name}
+                    </p>
+                  )}
+                  <button className="text-[10px] font-bold text-blue-500 flex items-center gap-1 ml-auto group-hover:gap-1.5 transition-all">
+                    View Class <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
               </motion.div>
             ))}
           </div>

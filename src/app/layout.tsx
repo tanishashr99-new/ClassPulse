@@ -18,15 +18,8 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "SmartCampus AI — Intelligent Student Management",
-  description:
-    "AI-powered student management and attendance system for modern educational institutions. Face recognition, real-time analytics, and smart insights.",
-  keywords: [
-    "student management",
-    "attendance system",
-    "AI education",
-    "smart campus",
-    "face recognition",
-  ],
+  description: "Next-generation student management system powered by AI",
+  keywords: ["education", "AI", "management", "SmartCampus"],
   authors: [{ name: "SmartCampus AI" }],
   openGraph: {
     title: "SmartCampus AI — Intelligent Student Management",
@@ -35,6 +28,9 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+import { NavigationLoadingBar } from "@/components/ui/NavigationLoadingBar";
+import { Suspense } from "react";
 
 export default function RootLayout({
   children,
@@ -46,7 +42,14 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetBrainsMono.variable} font-sans antialiased`}
       >
-        <ThemeProvider><AuthProvider>{children}</AuthProvider></ThemeProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <NavigationLoadingBar />
+            </Suspense>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

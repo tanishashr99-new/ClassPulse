@@ -5,12 +5,15 @@ import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getTests, getTestAvgScores, getTestQuestionCount } from "@/lib/data-service";
-import { Clock, FileQuestion, Plus, Play, BarChart3, Calendar } from "lucide-react";
+import { Clock, FileQuestion, Plus, Play, BarChart3, Calendar, ArrowRight } from "lucide-react";
+import { MOCK_TESTS } from "@/lib/mockData";
 
 export default function TestsPage() {
-  const { data: tests, loading } = useSupabaseQuery(() => getTests());
+  const { data: apiTests, loading } = useSupabaseQuery(() => getTests());
   const { data: avgScores } = useSupabaseQuery(() => getTestAvgScores());
   const { data: questionCounts } = useSupabaseQuery(() => getTestQuestionCount());
+
+  const tests = (apiTests && apiTests.length > 0) ? apiTests : MOCK_TESTS;
 
   return (
     <>
@@ -74,7 +77,7 @@ export default function TestsPage() {
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t" style={{ borderColor: "var(--border-color)" }}>
                     {test.status === "upcoming" ? (
                       <button className="flex-1 btn-primary flex items-center justify-center gap-2 py-2 text-xs">
-                        <Play className="w-3.5 h-3.5" /> Start Test
+                        Prepare <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     ) : (
                       <button className="flex-1 btn-secondary flex items-center justify-center gap-2 py-2 text-xs">

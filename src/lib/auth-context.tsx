@@ -13,7 +13,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: (role: "student" | "admin") => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithEmail: (email: string, password: string, fullName: string, role: string, extra?: Record<string, string>) => Promise<{ error: string | null }>;
+  signUpWithEmail: (email: string, password: string, fullName: string, role: string, extra?: Record<string, string>) => Promise<{ error: string | null; confirmationRequired?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -26,8 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Fetch or create profile from Supabase
-  async function fetchProfile(userId: string, userEmail: string, userName?: string) {
+  // Fetch profile from Supabase
+  async function fetchProfile(userId: string) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -38,67 +38,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(data as Profile);
       return data as Profile;
     }
-
-    // No profile exists yet – auto-create one
-    if (error && error.code === "PGRST116") {
-      const newProfile = {
-        id: userId,
-        email: userEmail,
-        full_name: userName || userEmail.split("@")[0],
-        role: "student" as const, // default role; can be changed
-      };
-      const { data: created } = await supabase
-        .from("profiles")
-        .insert(newProfile)
-        .select()
-        .single();
-      if (created) {
-        setProfile(created as Profile);
-        return created as Profile;
-      }
+    
+    // Do not auto-create here to avoid race conditions with auth/callback
+    if (error && error.code !== "PGRST116") {
+      console.error("Error fetching profile:", error);
     }
     return null;
   }
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        fetchProfile(
-          s.user.id,
-          s.user.email || "",
-          s.user.user_metadata?.full_name || s.user.user_metadata?.name
-        );
-      }
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => {
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s?.user) {
+          fetchProfile(s.user.id).catch(err => {
+            console.error("Initial profile fetch error:", err);
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Auth session error:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          await fetchProfile(
-            s.user.id,
-            s.user.email || "",
-            s.user.user_metadata?.full_name || s.user.user_metadata?.name
-          );
-        } else {
-          setProfile(null);
+        try {
+          setSession(s);
+          setUser(s?.user ?? null);
+          if (s?.user) {
+            await fetchProfile(s.user.id);
+          } else {
+            setProfile(null);
+          }
+        } catch (err) {
+          console.error("Auth state change error:", err);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Google OAuth
   async function signInWithGoogle(role: "student" | "admin") {
+    // Store intended role in localStorage for reliable redirect in callback
+    if (typeof window !== "undefined") {
+      localStorage.setItem("intended_role", role);
+    }
+
     const redirectUrl = typeof window !== "undefined"
       ? `${window.location.origin}/auth/callback?role=${role}`
       : "/auth/callback";
@@ -129,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName: string,
     role: string,
     extra?: Record<string, string>
-  ): Promise<{ error: string | null }> {
+  ): Promise<{ error: string | null; confirmationRequired?: boolean }> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -137,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { full_name: fullName, role },
       },
     });
+
     if (error) return { error: error.message };
 
     // Create profile entry
@@ -150,7 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         student_id: extra?.student_id || null,
       });
     }
-    return { error: null };
+
+    // If session is null, it typically means email confirmation is required
+    const confirmationRequired = !data.session;
+    return { error: null, confirmationRequired };
   }
 
   // Sign out

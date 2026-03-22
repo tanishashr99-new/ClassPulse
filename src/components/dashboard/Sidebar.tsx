@@ -28,6 +28,7 @@ import {
   ScrollText
 } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useAuth } from "@/lib/auth-context";
 
 interface SidebarProps {
   role: "admin" | "teacher" | "student";
@@ -74,6 +75,7 @@ const teacherLinks = [
 export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = useTheme();
+  const { signOut } = useAuth();
   const links = role === "admin" ? adminLinks : role === "teacher" ? teacherLinks : studentLinks;
 
   return (
@@ -152,13 +154,15 @@ export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span>Settings</span>}
         </Link>
-        <Link
-          href="/login"
-          className={`sidebar-link ${collapsed ? "justify-center px-0" : ""}`}
+        <button
+          onClick={async () => {
+            await signOut();
+          }}
+          className={`w-full sidebar-link ${collapsed ? "justify-center px-0" : ""}`}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span>Log out</span>}
-        </Link>
+        </button>
       </div>
 
       {/* Toggle button */}

@@ -26,13 +26,16 @@ export default function AIInsightsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl p-8"
-          style={{ background: "var(--gradient-accent)" }}
+          className="relative overflow-hidden rounded-2xl p-8 border-l-[4px]"
+          style={{ 
+            background: "#161b27", 
+            border: "1px solid rgba(99,102,241,0.3)",
+            borderLeftColor: "#6366f1"
+          }}
         >
-          <div className="floating-orb w-40 h-40 bg-white/20 -top-20 -right-20" />
           <div className="relative z-10 flex items-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Brain className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center backdrop-blur-sm border border-indigo-500/20">
+              <Brain className="w-8 h-8 text-indigo-500" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white mb-1">SmartCampus AI Engine</h2>
@@ -41,7 +44,7 @@ export default function AIInsightsPage() {
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-white/70" />
+              <Sparkles className="w-4 h-4 text-indigo-400" />
               <span className="text-xs font-semibold text-white/70">Live</span>
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             </div>

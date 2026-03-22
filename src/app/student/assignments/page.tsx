@@ -7,48 +7,64 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { getAssignments } from "@/lib/data-service";
 import { FileText, Clock, Upload, CheckCircle2, AlertCircle, Timer, ChevronRight } from "lucide-react";
+import { Skeleton, TableRowSkeleton, StatCardSkeleton } from "@/components/ui/Skeleton";
+import { MOCK_ASSIGNMENTS } from "@/lib/mockData";
 
 export default function StudentAssignmentsPage() {
   const router = useRouter();
-  const { data: assignments, loading } = useSupabaseQuery(() => getAssignments());
-  const actualAssignments = assignments || [];
+  const { data: apiAssignments, loading } = useSupabaseQuery(() => getAssignments());
+  const assignments = ((apiAssignments && apiAssignments.length > 0) ? apiAssignments : MOCK_ASSIGNMENTS) as any[];
 
   return (
     <>
       <TopBar title="Assignments" subtitle="Your assignments and submissions" />
 
       <div className="p-6 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[
-            { label: "Total", value: 5, color: "#3b82f6" },
-            { label: "Completed", value: 1, color: "#10b981" },
-            { label: "Pending", value: 2, color: "#f59e0b" },
-            { label: "Overdue", value: 1, color: "#ef4444" },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className="card p-5 relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: item.color }} />
-              <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{item.value}</p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{item.label}</p>
-            </motion.div>
-          ))}
-        </div>
+        {loading ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </div>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => <div key={i} className="card p-6"><TableRowSkeleton /></div>)}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[
+                { label: "Total", value: (assignments || []).length, color: "#3b82f6" },
+                { label: "Completed", value: (assignments || []).filter((a: any) => a.status === "completed").length, color: "#10b981" },
+                { label: "Pending", value: (assignments || []).filter((a: any) => a.status === "active" || a.status === "pending").length, color: "#f59e0b" },
+                { label: "Overdue", value: (assignments || []).filter((a: any) => a.status === "overdue").length, color: "#ef4444" },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  className="card p-5 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: item.color }} />
+                  <p className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{item.value}</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{item.label}</p>
+                </motion.div>
+              ))}
+            </div>
 
-        {/* Assignment List */}
-        <div className="space-y-4">
-          {actualAssignments.map((assignment: any, i: number) => {
+            {/* Assignment List */}
+            <div className="space-y-4">
+              {assignments.map((assignment: any, i: number) => {
             const isCompleted = assignment.status === "completed";
             const isOverdue = assignment.status === "overdue";
             return (
               <motion.div
                 key={assignment.id}
-                onClick={() => router.push(`/student/assignments/\${isCompleted ? assignment.id : 'pending'}`)}
+                onClick={() => router.push(`/student/assignments/${isCompleted ? assignment.id : 'pending'}`)}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
@@ -56,7 +72,7 @@ export default function StudentAssignmentsPage() {
               >
                 <div className="flex items-start gap-4">
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 \${
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
                       isCompleted
                         ? "bg-green-500/10"
                         : isOverdue
@@ -89,7 +105,7 @@ export default function StudentAssignmentsPage() {
                       <span>{assignment.subject}</span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Due: {assignment.dueDate}
+                        Due: {assignment.date || assignment.dueDate}
                       </span>
                     </div>
                   </div>
@@ -106,7 +122,9 @@ export default function StudentAssignmentsPage() {
               </motion.div>
             );
           })}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

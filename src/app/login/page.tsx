@@ -37,22 +37,24 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    const loginEmail = selectedRole === "teacher" ? `${email.toLowerCase().replace(/\s+/g, '')}@smartcampus.edu` : email;
+
     try {
       if (isLogin) {
-        const { error: err } = await signInWithEmail(email, password);
+        const { error: err } = await signInWithEmail(loginEmail, password);
         if (err) { setError(err); setLoading(false); return; }
         // Redirect based on role selection
-        router.push(selectedRole === "teacher" ? "/admin" : "/student");
+        router.push(selectedRole === "teacher" ? "/teacher" : "/student");
       } else {
-        const role = selectedRole === "teacher" ? "admin" : "student";
+        const role = selectedRole === "teacher" ? "teacher" : "student";
         const extra: Record<string, string> = {};
         if (selectedRole === "teacher") extra.department = department;
         if (selectedRole === "student") extra.student_id = studentId;
 
-        const { error: err } = await signUpWithEmail(email, password, fullName, role, extra);
+        const { error: err } = await signUpWithEmail(loginEmail, password, fullName, role, extra);
         if (err) { setError(err); setLoading(false); return; }
         // After signup, redirect
-        router.push(selectedRole === "teacher" ? "/admin" : "/student");
+        router.push(selectedRole === "teacher" ? "/teacher" : "/student");
       }
     } catch {
       setError("An unexpected error occurred");
@@ -204,7 +206,7 @@ export default function LoginPage() {
                   </div>
                 </motion.button>
 
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedRole("teacher")} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setSelectedRole("teacher"); setIsLogin(true); }} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(135deg, #3b82f6, #6d28d9)" }} />
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "linear-gradient(135deg, #3b82f6, #6d28d9)", boxShadow: "0 6px 20px rgba(59,130,246,0.3)" }}>
@@ -259,25 +261,29 @@ export default function LoginPage() {
               )}
 
               {/* Google Sign In */}
-              <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full btn-secondary flex items-center justify-center gap-3 mb-6 py-3"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                Continue with Google
-              </button>
+              {selectedRole !== "teacher" && (
+                <>
+                  <button
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full btn-secondary flex items-center justify-center gap-3 mb-6 py-3"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                    </svg>
+                    Continue with Google
+                  </button>
 
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 h-px" style={{ background: "var(--border-color)" }} />
-                <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>or</span>
-                <div className="flex-1 h-px" style={{ background: "var(--border-color)" }} />
-              </div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="flex-1 h-px" style={{ background: "var(--border-color)" }} />
+                    <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>or</span>
+                    <div className="flex-1 h-px" style={{ background: "var(--border-color)" }} />
+                  </div>
+                </>
+              )}
 
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {!isLogin && (
@@ -288,10 +294,12 @@ export default function LoginPage() {
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Email</label>
+                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+                    {selectedRole === "teacher" ? "Teacher ID" : "Email"}
+                  </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-tertiary)" }} />
-                    <input type="email" className="input-field pl-10" placeholder={selectedRole === "teacher" ? "professor@campus.edu" : "student@campus.edu"} value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <input type={selectedRole === "teacher" ? "text" : "email"} className="input-field pl-10" placeholder={selectedRole === "teacher" ? "e.g. T1" : "student@campus.edu"} value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                 </div>
 
@@ -354,12 +362,14 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <p className="text-sm text-center mt-6" style={{ color: "var(--text-secondary)" }}>
-                {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                <button onClick={() => { setIsLogin(!isLogin); setError(null); }} className="text-blue-500 font-semibold hover:underline">
-                  {isLogin ? "Sign up" : "Sign in"}
-                </button>
-              </p>
+              {selectedRole !== "teacher" && (
+                <p className="text-sm text-center mt-6" style={{ color: "var(--text-secondary)" }}>
+                  {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+                  <button onClick={() => { setIsLogin(!isLogin); setError(null); }} className="text-blue-500 font-semibold hover:underline">
+                    {isLogin ? "Sign up" : "Sign in"}
+                  </button>
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

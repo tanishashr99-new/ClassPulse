@@ -207,21 +207,6 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-6 relative">
           <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-8"
-              style={{
-                background: "rgba(59,130,246,0.08)",
-                borderColor: "rgba(59,130,246,0.2)",
-              }}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-xs font-semibold text-blue-500">
-                Powered by Advanced AI
-              </span>
-            </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 30 }}

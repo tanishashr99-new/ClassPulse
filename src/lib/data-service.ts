@@ -116,11 +116,14 @@ export async function getTodayAttendanceRate() {
   return { rate: total > 0 ? Math.round((present / total) * 1000) / 10 : 0, present, late, absent, total };
 }
 
-export async function markAttendance(studentId: string, classId: string, date: string, status: string, method: string = "manual") {
+export async function markAttendance(studentId: string, classId: string, date: string, status: string, method: string = "manual", markedBy?: string) {
+  const payload: any = { student_id: studentId, class_id: classId, date, status, method };
+  if (markedBy) payload.marked_by = markedBy;
+
   const { data, error } = await supabase
     .from("attendance")
     .upsert(
-      { student_id: studentId, class_id: classId, date, status, method },
+      payload,
       { onConflict: "student_id,class_id,date" }
     )
     .select();

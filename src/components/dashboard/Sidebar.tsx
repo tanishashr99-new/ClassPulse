@@ -30,7 +30,7 @@ import {
 import { useTheme } from "@/components/providers/ThemeProvider";
 
 interface SidebarProps {
-  role: "admin" | "student";
+  role: "admin" | "teacher" | "student";
   collapsed: boolean;
   onToggle: () => void;
 }
@@ -62,10 +62,19 @@ const studentLinks = [
   { href: "/student/badges", label: "Badges", icon: Award },
 ];
 
+const teacherLinks = [
+  { href: "/teacher", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/teacher/classes", label: "My Classes", icon: BookOpen },
+  { href: "/teacher/attendance", label: "Mark Attendance", icon: ClipboardCheck },
+  { href: "/teacher/assignments", label: "Assignments", icon: FileText },
+  { href: "/teacher/tests", label: "Tests", icon: GraduationCap },
+  { href: "/teacher/analytics", label: "Analytics", icon: BarChart3 },
+];
+
 export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = useTheme();
-  const links = role === "admin" ? adminLinks : studentLinks;
+  const links = role === "admin" ? adminLinks : role === "teacher" ? teacherLinks : studentLinks;
 
   return (
     <motion.aside

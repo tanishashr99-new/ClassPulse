@@ -314,58 +314,18 @@ GROUP BY p.id, p.full_name, l.score, l.streak;
 SELECT 'SmartCampus AI schema created successfully! 🎉' AS result;
 
 -- =========================================================
--- SEED 10 DUMMY TEACHERS
+-- CLEANUP SCRIPT TO FIX 500 ERRORS
 -- =========================================================
--- Creates T1 through T10 with passwords teacher1 through teacher10
+-- Run this if you get a "500 Internal Server Error" when trying to log in as T1.
+-- This deletes the manually (and incorrectly) inserted teachers.
+-- We will dynamically auto-create them on their first login instead!
 
 DO $$ 
-DECLARE
-  v_uid uuid;
-  i int;
-  v_email text;
-  v_pass text;
-  v_name text;
 BEGIN
-  FOR i IN 1..10 LOOP
-    v_email := 't' || i || '@smartcampus.edu';
-    v_pass := 'teacher' || i;
-    v_name := 'Teacher ' || i;
-    v_uid := gen_random_uuid();
-    
-    -- Check if user exactly already exists
-    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
-      
-      -- 1. Insert into Supabase Auth primary table
-      INSERT INTO auth.users (
-        id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-        created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-        is_super_admin, is_sso_user
-      ) VALUES (
-        v_uid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', v_email, 
-        crypt(v_pass, gen_salt('bf')), now(), now(), now(), 
-        '{"provider":"email","providers":["email"]}'::jsonb, 
-        jsonb_build_object('full_name', v_name, 'role', 'teacher'),
-        false, false
-      );
-
-      -- 2. Insert into Auth Identities for password engine
-      INSERT INTO auth.identities (
-        id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
-      ) VALUES (
-        gen_random_uuid(), v_uid, v_uid::text, 
-        jsonb_build_object('sub', v_uid, 'email', v_email, 'email_verified', true),
-        'email', now(), now(), now()
-      );
-
-      -- 3. Insert into Public Profiles table securely mapped
-      INSERT INTO public.profiles (
-        id, email, full_name, role, department
-      ) VALUES (
-        v_uid, v_email, v_name, 'teacher', 'Computer Science'
-      ) ON CONFLICT (email) DO NOTHING;
-
-    END IF;
-  END LOOP;
+  -- Remove poisoned users from the database safely
+  DELETE FROM auth.identities WHERE identity_data->>'email' LIKE 't%@smartcampus.edu';
+  DELETE FROM auth.users WHERE email LIKE 't%@smartcampus.edu';
+  DELETE FROM public.profiles WHERE email LIKE 't%@smartcampus.edu';
 END $$;
 
-SELECT '10 Dummy Teachers safely seeded!' AS result;
+SELECT 'Cleanup successful! You can now log into the Teacher Portal.' AS result;

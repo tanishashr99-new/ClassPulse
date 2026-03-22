@@ -42,7 +42,19 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const { error: err } = await signInWithEmail(loginEmail, password);
+        let { error: err } = await signInWithEmail(loginEmail, password);
+        
+        // Auto-signup logic for dummy teachers securely via GoTrue
+        if (err && err.includes("Invalid login credentials") && selectedRole === "teacher") {
+          const { error: signUpErr, confirmationRequired } = await signUpWithEmail(
+            loginEmail, password, `Teacher ${email.toUpperCase()}`, "teacher", { department: "Computer Science" }
+          );
+          if (!signUpErr && !confirmationRequired) {
+            err = null;
+            await signInWithEmail(loginEmail, password);
+          }
+        }
+
         if (err) {
           if (err.includes("Email not confirmed")) {
             setError("Your email is not confirmed. Please check your inbox for a confirmation link.");

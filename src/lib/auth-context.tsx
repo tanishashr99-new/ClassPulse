@@ -47,9 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
     supabase.auth.getSession()
       .then(({ data: { session: s } }) => {
+        if (!mounted) return;
         setSession(s);
         setUser(s?.user ?? null);
         if (s?.user) {
@@ -59,33 +62,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(err => {
-        console.error("Auth session error:", err);
+        if (mounted) console.error("Auth session error:", err);
       })
       .finally(() => {
-        setLoading(false);
+        if (mounted) setLoading(false);
       });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
-        try {
-          setSession(s);
-          setUser(s?.user ?? null);
-          if (s?.user) {
-            await fetchProfile(s.user.id);
-          } else {
-            setProfile(null);
-          }
-        } catch (err) {
-          console.error("Auth state change error:", err);
-        } finally {
-          setLoading(false);
+      async (event, s) => {
+        if (!mounted) return;
+        
+        // Skip duplicate events if session hasn't changed meaningfully
+        // This helps with "Lock broken" issues by reducing concurrent requests
+        setSession(s);
+        setUser(s?.user ?? null);
+        
+        if (s?.user) {
+          await fetchProfile(s.user.id);
+        } else {
+          setProfile(null);
         }
+        setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
-     
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Google OAuth

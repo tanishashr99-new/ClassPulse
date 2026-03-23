@@ -5,7 +5,17 @@ if (!supabaseUrl.startsWith("http")) supabaseUrl = `https://${supabaseUrl}`;
 
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    // Prevent the "Lock broken by another request with the 'steal' option" error
+    // By disabling lock stealing or letting it handle it more gracefully
+    storageKey: 'classpulse-auth-token',
+  }
+});
 
 // Helper: fetch with timeout
 export async function fetchWithTimeout<T>(

@@ -18,6 +18,22 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- ──────────────────────────────────────────────
+-- 1.5 TEACHERS
+-- ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS teachers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  teacher_code TEXT UNIQUE NOT NULL,
+  full_name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  department TEXT,
+  subject TEXT,
+  phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ──────────────────────────────────────────────
 -- 2. CLASSES
 -- ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS classes (
@@ -191,6 +207,35 @@ CREATE TABLE IF NOT EXISTS leaderboard (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ──────────────────────────────────────────────
+-- 15. TIMETABLE
+-- ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS timetable (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  class_name TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  day TEXT NOT NULL CHECK (day IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  room_number TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ──────────────────────────────────────────────
+-- 16. TEACHER EVENTS
+-- ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS teacher_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  event_date DATE NOT NULL,
+  event_time TIME NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('class', 'proctor', 'discussion', 'exam')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ══════════════════════════════════════════════
 -- INDEXES for performance
 -- ══════════════════════════════════════════════
@@ -210,6 +255,7 @@ CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON leaderboard(score DESC);
 -- ROW LEVEL SECURITY (RLS)
 -- ══════════════════════════════════════════════
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
@@ -223,9 +269,12 @@ ALTER TABLE student_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timetable ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_events ENABLE ROW LEVEL SECURITY;
 
 -- Allow all reads for authenticated users (demo-friendly policies)
 CREATE POLICY "Anyone can read profiles" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Anyone can read teachers" ON teachers FOR SELECT USING (true);
 CREATE POLICY "Anyone can read classes" ON classes FOR SELECT USING (true);
 CREATE POLICY "Anyone can read enrollments" ON enrollments FOR SELECT USING (true);
 CREATE POLICY "Anyone can read attendance" ON attendance FOR SELECT USING (true);
@@ -239,10 +288,14 @@ CREATE POLICY "Anyone can read student_badges" ON student_badges FOR SELECT USIN
 CREATE POLICY "Anyone can read notifications" ON notifications FOR SELECT USING (true);
 CREATE POLICY "Anyone can read ai_insights" ON ai_insights FOR SELECT USING (true);
 CREATE POLICY "Anyone can read leaderboard" ON leaderboard FOR SELECT USING (true);
+CREATE POLICY "Anyone can read timetable" ON timetable FOR SELECT USING (true);
+CREATE POLICY "Anyone can read teacher_events" ON teacher_events FOR SELECT USING (true);
 
 -- Allow inserts/updates for authenticated users
 CREATE POLICY "Auth users can insert profiles" ON profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "Auth users can update profiles" ON profiles FOR UPDATE USING (true);
+CREATE POLICY "Auth users can insert teachers" ON teachers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Auth users can update teachers" ON teachers FOR UPDATE USING (true);
 CREATE POLICY "Auth users can insert classes" ON classes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Auth users can update classes" ON classes FOR UPDATE USING (true);
 CREATE POLICY "Auth users can insert enrollments" ON enrollments FOR INSERT WITH CHECK (true);
@@ -261,6 +314,10 @@ CREATE POLICY "Auth users can update notifications" ON notifications FOR UPDATE 
 CREATE POLICY "Auth users can insert ai_insights" ON ai_insights FOR INSERT WITH CHECK (true);
 CREATE POLICY "Auth users can insert leaderboard" ON leaderboard FOR INSERT WITH CHECK (true);
 CREATE POLICY "Auth users can update leaderboard" ON leaderboard FOR UPDATE USING (true);
+CREATE POLICY "Auth users can insert timetable" ON timetable FOR INSERT WITH CHECK (true);
+CREATE POLICY "Auth users can update timetable" ON timetable FOR UPDATE USING (true);
+CREATE POLICY "Auth users can insert teacher_events" ON teacher_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Auth users can update teacher_events" ON teacher_events FOR UPDATE USING (true);
 
 -- ══════════════════════════════════════════════
 -- All tables are created empty — add data through the app UI
@@ -313,19 +370,102 @@ GROUP BY p.id, p.full_name, l.score, l.streak;
 
 SELECT 'SmartCampus AI schema created successfully! 🎉' AS result;
 
--- =========================================================
--- CLEANUP SCRIPT TO FIX 500 ERRORS
--- =========================================================
--- Run this if you get a "500 Internal Server Error" when trying to log in as T1.
--- This deletes the manually (and incorrectly) inserted teachers.
--- We will dynamically auto-create them on their first login instead!
 
-DO $$ 
-BEGIN
-  -- Remove poisoned users from the database safely
-  DELETE FROM auth.identities WHERE identity_data->>'email' LIKE 't%@smartcampus.edu';
-  DELETE FROM auth.users WHERE email LIKE 't%@smartcampus.edu';
-  DELETE FROM public.profiles WHERE email LIKE 't%@smartcampus.edu';
-END $$;
 
-SELECT 'Cleanup successful! You can now log into the Teacher Portal.' AS result;
+-- =========================================================
+-- MIGRATE EXISTING TEACHERS FROM PROFILES
+-- =========================================================
+-- This will copy existing teachers from `profiles` into the new `teachers` table.
+-- It generates 'T1', 'T2' etc. for the teacher_code and 'teacher1', 'teacher2' etc. for the password.
+INSERT INTO teachers (id, user_id, teacher_code, full_name, email, password, department, subject, phone, created_at)
+SELECT 
+    id AS id, 
+    id AS user_id, 
+    'T' || ROW_NUMBER() OVER(ORDER BY created_at) AS teacher_code, 
+    full_name, 
+    email, 
+    'teacher' || ROW_NUMBER() OVER(ORDER BY created_at) AS password, 
+    department, 
+    'General' AS subject,
+    '000-000-0000' AS phone,
+    created_at
+FROM profiles
+WHERE role = 'teacher'
+ON CONFLICT (id) DO NOTHING;
+
+SELECT 'Migration of existing teachers completed!' AS result;
+
+-- =========================================================
+-- 4. INSERT DUMMY TIMETABLE DATA FOR T1 TO T10
+-- =========================================================
+INSERT INTO timetable (teacher_id, class_name, subject, day, start_time, end_time, room_number)
+SELECT t.id, d.class_name, d.subject, d.day, d.start_time::TIME, d.end_time::TIME, d.room_number
+FROM teachers t
+JOIN (
+  VALUES 
+    -- 👨‍🏫 TEACHER T1 (Computer Science)
+    ('T1', 'CS 101 - Intro', 'Computer Science', 'Monday', '09:00:00', '10:00:00', 'Lab 1'),
+    ('T1', 'CS 102 - Data Structures', 'Computer Science', 'Tuesday', '14:00:00', '15:00:00', 'Lab 2'),
+    ('T1', 'CS 101 - Intro', 'Computer Science', 'Wednesday', '11:00:00', '12:00:00', 'Lab 1'),
+    ('T1', 'CS Project Mentoring', 'Computer Science', 'Friday', '15:00:00', '16:00:00', 'Room 304'),
+    
+    -- 👨‍🏫 TEACHER T2 (Mathematics)
+    ('T2', 'Math 101 - Calculus', 'Mathematics', 'Monday', '10:00:00', '11:00:00', 'Room 101'),
+    ('T2', 'Math 102 - Algebra', 'Mathematics', 'Wednesday', '09:00:00', '10:00:00', 'Room 102'),
+    ('T2', 'Statistics', 'Mathematics', 'Thursday', '11:00:00', '12:00:00', 'Room 105'),
+    ('T2', 'Math 101 - Calculus', 'Mathematics', 'Friday', '14:00:00', '15:00:00', 'Room 101'),
+    ('T2', 'Remedial Math', 'Mathematics', 'Saturday', '09:00:00', '10:00:00', 'Hall A'),
+
+    -- 👨‍🏫 TEACHER T3 (Physics)
+    ('T3', 'Physics 101', 'Physics', 'Tuesday', '09:00:00', '10:00:00', 'Room 201'),
+    ('T3', 'Physics 101 Lab', 'Physics', 'Tuesday', '10:00:00', '11:00:00', 'Lab 3'),
+    ('T3', 'Quantum Mechanics', 'Physics', 'Thursday', '14:00:00', '15:00:00', 'Room 201'),
+    ('T3', 'Astrophysics Intro', 'Physics', 'Friday', '11:00:00', '12:00:00', 'Room 205'),
+
+    -- 👨‍🏫 TEACHER T4 (Chemistry)
+    ('T4', 'Organic Chem', 'Chemistry', 'Monday', '14:00:00', '15:00:00', 'Lab 4'),
+    ('T4', 'Inorganic Chem', 'Chemistry', 'Wednesday', '10:00:00', '11:00:00', 'Room 301'),
+    ('T4', 'Organic Chem Lab', 'Chemistry', 'Thursday', '09:00:00', '10:00:00', 'Lab 4'),
+    ('T4', 'Chem Thesis Prep', 'Chemistry', 'Saturday', '11:00:00', '12:00:00', 'Hall B'),
+
+    -- 👨‍🏫 TEACHER T5 (English)
+    ('T5', 'English Literature', 'English', 'Monday', '11:00:00', '12:00:00', 'Room 104'),
+    ('T5', 'Creative Writing', 'English', 'Tuesday', '15:00:00', '16:00:00', 'Room 106'),
+    ('T5', 'English Literature', 'English', 'Wednesday', '14:00:00', '15:00:00', 'Room 104'),
+    ('T5', 'Modern Poetry', 'English', 'Friday', '09:00:00', '10:00:00', 'Room 108'),
+
+    -- 👨‍🏫 TEACHER T6 (Computer Science)
+    ('T6', 'AI Foundations', 'Computer Science', 'Monday', '15:00:00', '16:00:00', 'Lab 1'),
+    ('T6', 'Web Development', 'Computer Science', 'Wednesday', '11:00:00', '12:00:00', 'Lab 2'),
+    ('T6', 'Database Systems', 'Computer Science', 'Thursday', '10:00:00', '11:00:00', 'Lab 1'),
+    ('T6', 'Web Development', 'Computer Science', 'Friday', '14:00:00', '15:00:00', 'Lab 2'),
+    ('T6', 'Hackathon Prep', 'Computer Science', 'Saturday', '14:00:00', '15:00:00', 'Lab 1'),
+
+    -- 👨‍🏫 TEACHER T7 (Mathematics)
+    ('T7', 'Discrete Math', 'Mathematics', 'Tuesday', '09:00:00', '10:00:00', 'Room 103'),
+    ('T7', 'Probability', 'Mathematics', 'Wednesday', '15:00:00', '16:00:00', 'Room 105'),
+    ('T7', 'Linear Algebra', 'Mathematics', 'Thursday', '09:00:00', '10:00:00', 'Room 102'),
+    ('T7', 'Discrete Math', 'Mathematics', 'Friday', '10:00:00', '11:00:00', 'Room 103'),
+    
+    -- 👨‍🏫 TEACHER T8 (Physics)
+    ('T8', 'Thermodynamics', 'Physics', 'Monday', '09:00:00', '10:00:00', 'Room 203'),
+    ('T8', 'Optics', 'Physics', 'Tuesday', '11:00:00', '12:00:00', 'Room 204'),
+    ('T8', 'Thermodynamics Lab', 'Physics', 'Wednesday', '14:00:00', '15:00:00', 'Lab 3'),
+    ('T8', 'Electromagnetism', 'Physics', 'Thursday', '15:00:00', '16:00:00', 'Room 203'),
+
+    -- 👨‍🏫 TEACHER T9 (Chemistry)
+    ('T9', 'Physical Chem', 'Chemistry', 'Monday', '11:00:00', '12:00:00', 'Room 303'),
+    ('T9', 'Analytical Chem', 'Chemistry', 'Tuesday', '10:00:00', '11:00:00', 'Lab 4'),
+    ('T9', 'Physical Chem Lab', 'Chemistry', 'Wednesday', '09:00:00', '10:00:00', 'Lab 4'),
+    ('T9', 'Biochemistry', 'Chemistry', 'Friday', '15:00:00', '16:00:00', 'Room 305'),
+    ('T9', 'Science Fair Prep', 'Chemistry', 'Saturday', '10:00:00', '11:00:00', 'Hall A'),
+
+    -- 👨‍🏫 TEACHER T10 (English)
+    ('T10', 'Technical Writing', 'English', 'Monday', '14:00:00', '15:00:00', 'Room 110'),
+    ('T10', 'Public Speaking', 'English', 'Tuesday', '14:00:00', '15:00:00', 'Hall B'),
+    ('T10', 'Technical Writing', 'English', 'Thursday', '11:00:00', '12:00:00', 'Room 110'),
+    ('T10', 'Journalism', 'English', 'Friday', '09:00:00', '10:00:00', 'Room 111')
+) AS d(tc, class_name, subject, day, start_time, end_time, room_number)
+ON t.teacher_code = d.tc;
+
+SELECT 'Timetable data populated successfully!' AS result;

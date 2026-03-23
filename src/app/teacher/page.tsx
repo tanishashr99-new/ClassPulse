@@ -1,16 +1,77 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import { Users, GraduationCap, ClipboardCheck, ArrowRight, Clock, Award, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
 import { generateAvatarGradient, getInitials } from "@/lib/utils";
+import { MyTimetable } from "@/components/dashboard/MyTimetable";
 
 export default function TeacherDashboard() {
-  const { profile } = useAuth();
-  
+  const { user, profile } = useAuth();
+  const [teacher, setTeacher] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchTeacher() {
+      if (!user) return;
+      
+      // 1. Try to fetch by user_id first
+      let { data, error } = await supabase
+        .from("teachers")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      const defaultCode = user.email?.split('_auth_')[1]?.split('@')[0]?.toUpperCase() || "T_NEW";
+
+      // 2. If not found by user_id, try to fetch by teacher_code (in case of old migrations)
+      if (!data && defaultCode !== "T_NEW") {
+        const { data: existingByCode } = await supabase
+          .from("teachers")
+          .select("*")
+          .eq("teacher_code", defaultCode)
+          .maybeSingle();
+          
+        if (existingByCode) {
+          // Update the existing teacher record with the new user.id so it remembers next time
+          await supabase
+            .from("teachers")
+            .update({ user_id: user.id })
+            .eq("id", existingByCode.id);
+            
+          data = { ...existingByCode, user_id: user.id };
+        }
+      }
+      
+      if (data) {
+        setTeacher(data);
+      } else {
+        // Automatically create a dummy teacher profile if absolutely none exists
+        // Exclude the fixed 'id' field so Supabase auto-generates the UUID
+        const newTeacher = {
+          user_id: user.id,
+          teacher_code: defaultCode,
+          full_name: profile?.full_name || "New Teacher",
+          email: user.email || "new_teacher@campus.edu",
+          password: "dummy_password",
+          department: profile?.department || "General",
+        };
+        const { data: insertedTeacher, error: insertError } = await supabase
+          .from("teachers")
+          .insert([newTeacher])
+          .select()
+          .maybeSingle();
+
+        if (insertedTeacher) setTeacher(insertedTeacher);
+        else console.error("Could not auto-create teacher profile:", insertError);
+      }
+    }
+    fetchTeacher();
+  }, [user, profile]);
+
   const quickStats = [
     { label: "My Classes", value: "4", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
     { label: "Total Students", value: "142", icon: Users, color: "text-emerald-500", bg: "bg-emerald-500/10" },
@@ -32,7 +93,15 @@ export default function TeacherDashboard() {
         >
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
           <div className="relative z-10 max-w-xl">
-            <h1 className="text-3xl font-bold mb-3">Your Classes Array Awaits</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome back, {teacher?.full_name || profile?.full_name || "Teacher"}</h1>
+            {teacher && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold font-mono text-white shadow-sm border border-white/10">ID: {teacher.teacher_code}</span>
+                {teacher.department && (
+                  <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm border border-white/10">{teacher.department} Department</span>
+                )}
+              </div>
+            )}
             <p className="text-white/80 text-sm leading-relaxed mb-6">
               You have 2 upcoming lectures today, and attendance needs to be marked for CS 301. Track student progress directly from here.
             </p>
@@ -146,6 +215,13 @@ export default function TeacherDashboard() {
             </div>
           </motion.div>
         </div>
+
+        {/* Timetable Section */}
+        {teacher?.id && (
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+            <MyTimetable teacherId={teacher.id} />
+          </motion.div>
+        )}
       </div>
     </>
   );

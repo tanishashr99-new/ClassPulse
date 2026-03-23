@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Suspense } from "react";
@@ -9,101 +9,73 @@ function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const processing = useRef(false);
+
   useEffect(() => {
     const handleCallback = async () => {
+      if (processing.current) return;
+      processing.current = true;
+
       // Get role from query params OR localStorage fallback
       let role = searchParams.get("role");
-      
       if (!role && typeof window !== "undefined") {
-        role = localStorage.getItem("intended_role");
+        role = localStorage.getItem("intended_role") || "student";
       }
-      
       role = role || "student";
 
-      // Supabase handles the token exchange automatically via the URL hash
       const { data: { session }, error } = await supabase.auth.getSession();
-      console.log("Auth Callback - Session:", !!session, "Error:", error);
 
       if (error || !session) {
-        console.warn("Auth Callback - Redirecting to login due to missing session");
-        router.push("/login");
+        router.replace("/login");
         return;
       }
 
-      // DOMAIN RESTRICTION CHECK
+      // DOMAIN RESTRICTION CHECK (Instant)
       const userEmail = session.user.email || "";
       if (!userEmail.endsWith("@giet.edu")) {
-        console.warn("Auth Callback - Unauthorized domain:", userEmail);
         await supabase.auth.signOut();
-        router.push("/login?error=Only @giet.edu accounts are allowed");
+        router.replace("/login?error=Only @giet.edu accounts are allowed");
         return;
       }
 
-      // Extract roll number and name (e.g., 24cse388.tanishasharma@giet.edu)
-      const emailPrefix = userEmail.split("@")[0];
-      const emailParts = emailPrefix.split(".");
-      
-      const rollNumber = emailParts[0]; // 24cse388
-      const rawName = emailParts.slice(1).join(" "); // tanishasharma or tanisha sharma
-      
-      // Format Name: title case (e.g., "tanisha sharma" -> "Tanisha Sharma")
+      // Extract roll number and name (Instant)
+      const emailParts = userEmail.split("@")[0].split(".");
+      const rollNumber = emailParts[0];
+      const rawName = emailParts.slice(1).join(" ");
       const formattedName = rawName
-        ? rawName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
+        ? rawName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
         : (session.user.user_metadata?.full_name || session.user.user_metadata?.name || rollNumber || "User");
 
-      // Clear storage after successful session retrieval
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("intended_role");
-      }
-
-      // Ensure profile exists
+      // Check if profile exists (1st DB Call)
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id, role, student_id")
         .eq("id", session.user.id)
         .maybeSingle();
-      console.log("Auth Callback - Profile:", existingProfile);
 
       if (!existingProfile) {
-        console.log("Auth Callback - Creating new profile for role:", role);
-        // Create profile for first-time Google login
-        const { error: insertError } = await supabase.from("profiles").insert({
+        // Create profile (2nd DB Call - Only for new users)
+        await supabase.from("profiles").insert({
           id: session.user.id,
           email: userEmail,
           full_name: formattedName,
-          role: role === "admin" ? "admin" : "student", // use the fallback role
+          role: role === "admin" ? "admin" : "student",
           student_id: rollNumber,
           avatar_url: session.user.user_metadata?.avatar_url || null,
         });
-
-        if (insertError) {
-          console.error("Auth Callback - Profile creation failed:", insertError);
-          // Fallback to student dashboard if creation fails but we have a session
-          router.push("/student");
-          return;
-        }
-
-        // Route based on selected role
-        const dest = role === "admin" ? "/admin" : "/student";
-        console.log("Auth Callback - New user redirecting to:", dest);
-        router.push(dest);
-      } else {
-        // If student_id is missing for existing profile, update it
-        if (existingProfile.role === "student" && !existingProfile.student_id) {
-          await supabase
-            .from("profiles")
-            .update({ student_id: rollNumber })
-            .eq("id", session.user.id);
-        }
-
-        // Route based on existing profile role
-        const dest = 
-          existingProfile.role === "admin" || existingProfile.role === "teacher"
-            ? "/admin"
-            : "/student";
-        console.log("Auth Callback - Existing user redirecting to:", dest);
-        router.push(dest);
+      } else if (existingProfile.role === "student" && !existingProfile.student_id) {
+        // Fix missing roll number (Optional DB Call)
+        await supabase.from("profiles").update({ student_id: rollNumber }).eq("id", session.user.id);
       }
+
+      // Cleanup and Redirect (Instant)
+      if (typeof window !== "undefined") localStorage.removeItem("intended_role");
+      
+      const finalDest = existingProfile?.role === "admin" || existingProfile?.role === "teacher" || role === "admin"
+        ? "/admin" 
+        : "/student";
+        
+      router.replace(finalDest);
     };
 
     handleCallback();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "./supabase";
 import type { Session, User } from "@supabase/supabase-js";
@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastFetchedUser = useRef<string | null>(null);
+  const fetchingRef = useRef<string | null>(null);
   const router = useRouter();
 
   // Use a ref to track the last user we fetched a profile for to avoid redundant calls

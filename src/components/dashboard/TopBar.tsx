@@ -20,10 +20,14 @@ export function TopBar({ title, subtitle, onMenuClick }: TopBarProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const unreadCount = mockNotifications.filter((n) => !n.read).length;
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const router = useRouter();
 
-  const userInitials = profile?.full_name ? profile.full_name.substring(0, 2).toUpperCase() : "ME";
+  const userEmail = user?.email || "";
+  const emailPrefix = userEmail.split("@")[0];
+  const userInitials = profile?.full_name 
+    ? profile.full_name.substring(0, 2).toUpperCase() 
+    : (emailPrefix.substring(0, 2).toUpperCase() || "ME");
 
   return (
     <header
@@ -201,10 +205,10 @@ export function TopBar({ title, subtitle, onMenuClick }: TopBarProps) {
               >
                 <div className="p-3 border-b" style={{ borderColor: "var(--border-color)" }}>
                   <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                    {profile?.full_name || "Student"}
+                    {profile?.full_name || emailPrefix || "Student"}
                   </p>
                   <p className="text-[10px] truncate mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    {profile?.email || "smartcampus@example.com"}
+                    {userEmail || "smartcampus@example.com"}
                   </p>
                 </div>
                 

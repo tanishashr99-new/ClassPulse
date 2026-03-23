@@ -49,46 +49,12 @@ function CallbackHandler() {
           return;
         }
 
-        // Extract roll number and name
-        const emailParts = userEmail.split("@")[0].split(".");
-        const rollNumber = emailParts[0];
-        const rawName = emailParts.slice(1).join(" ");
-        const formattedName = rawName
-          ? rawName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-          : (session.user.user_metadata?.full_name || session.user.user_metadata?.name || rollNumber || "User");
-
-        // Sync Profile
-        const { data: existingProfile, error: fetchError } = await supabase
-          .from("profiles")
-          .select("id, role, student_id")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.error("Auth Error - Fetch Profile failed:", fetchError);
-          // Don't hang; continue if possible or fail gracefully
-        }
-
-        if (!existingProfile) {
-          await supabase.from("profiles").insert({
-            id: session.user.id,
-            email: userEmail,
-            full_name: formattedName,
-            role: role === "admin" ? "admin" : "student",
-            student_id: rollNumber,
-            avatar_url: session.user.user_metadata?.avatar_url || null,
-          });
-        } else if (existingProfile.role === "student" && !existingProfile.student_id) {
-          await supabase.from("profiles").update({ student_id: rollNumber }).eq("id", session.user.id);
-        }
-
-        // Final Redirect
+        // Cleanup and Redirect (No DB calls for profile creation/update for now)
         if (typeof window !== "undefined") localStorage.removeItem("intended_role");
         
-        const finalDest = existingProfile?.role === "admin" || existingProfile?.role === "teacher" || role === "admin"
-          ? "/admin" 
-          : "/student";
-          
+        // Final destination based on the role the user selected
+        const finalDest = role === "admin" ? "/admin" : "/student";
+        
         router.replace(finalDest);
       } catch (err: any) {
         console.error("Critical Auth Callback Error:", err);

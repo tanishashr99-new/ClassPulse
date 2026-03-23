@@ -54,7 +54,9 @@ export default function StudentDashboard() {
     { subject: "AI", score: 78, average: 68 },
   ];
 
-  const greeting = profile ? `Welcome back, ${profile.full_name.split(" ")[0]}!` : "Welcome back!";
+  const emailPrefix = user?.email?.split("@")[0] || "";
+  const displayName = profile?.full_name ? profile.full_name.split(" ")[0] : emailPrefix;
+  const greeting = displayName ? `Welcome back, ${displayName}!` : "Welcome back!";
 
   return (
     <>

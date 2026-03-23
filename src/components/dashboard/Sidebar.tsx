@@ -128,18 +128,11 @@ export function Sidebar({ role, collapsed, onToggle }: SidebarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className={`sidebar-link ${isActive ? "active" : ""} ${collapsed ? "justify-center px-0" : ""}`}
+              className={`sidebar-link relative ${isActive ? "active" : ""} ${collapsed ? "justify-center px-0" : ""}`}
               title={collapsed ? link.label : undefined}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span>{link.label}</span>}
-              {isActive && !collapsed && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute left-0 w-[3px] h-6 rounded-r-full"
-                  style={{ background: "var(--gradient-primary)" }}
-                />
-              )}
             </Link>
           );
         })}

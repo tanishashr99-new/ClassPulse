@@ -352,7 +352,7 @@ export default function LandingPage() {
                 </Link>
                 <Link
                   href="/student"
-                  className="btn-secondary px-8 py-3 text-base flex items-center gap-2"
+                  className="btn-primary px-8 py-3 text-base flex items-center gap-2"
                 >
                   Student
                   <ChevronRight className="w-4 h-4" />

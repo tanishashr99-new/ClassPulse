@@ -224,7 +224,7 @@ function LoginContent() {
               <p className="mb-10" style={{ color: "var(--text-secondary)" }}>Select your portal to get started</p>
 
               <div className="space-y-4">
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedRole("student")} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => router.push("/student")} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(135deg, #10b981, #3b82f6)" }} />
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "linear-gradient(135deg, #10b981, #3b82f6)", boxShadow: "0 6px 20px rgba(16,185,129,0.3)" }}>
@@ -237,7 +237,7 @@ function LoginContent() {
                   </div>
                 </motion.button>
 
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => { setSelectedRole("teacher"); setIsLogin(true); }} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => router.push("/teacher")} className="w-full card p-6 text-left group cursor-pointer relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(135deg, #3b82f6, #6d28d9)" }} />
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "linear-gradient(135deg, #3b82f6, #6d28d9)", boxShadow: "0 6px 20px rgba(59,130,246,0.3)" }}>

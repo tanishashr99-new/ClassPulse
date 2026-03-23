@@ -21,6 +21,7 @@ import {
   XCircle,
   Upload,
   Trophy,
+  ClipboardCheck,
 } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 
@@ -39,9 +40,9 @@ const stagger = {
 
 const features = [
   {
-    icon: Camera,
-    title: "AI Face Recognition",
-    description: "Automated attendance using real-time facial recognition powered by TensorFlow.js",
+    icon: ClipboardCheck,
+    title: "Attendance Management",
+    description: "Steamlined attendance tracking with real-time reports and analytics",
     gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
   },
   {
@@ -84,7 +85,7 @@ const problems = {
     "Student engagement is impossible to measure",
   ],
   after: [
-    "AI marks attendance in under 2 seconds",
+    "Automatic attendance updates in seconds",
     "Instant alerts when students need attention",
     "Auto-graded tests with analytics reports",
     "Gamification that drives real engagement",
@@ -98,9 +99,9 @@ const steps = [
     description: "Import your student list via CSV or connect your existing student database. Takes less than 5 minutes.",
   },
   {
-    icon: Camera,
-    title: "AI Tracks Automatically",
-    description: "Our face recognition engine marks attendance the moment students walk in. No cameras to configure — works with any webcam.",
+    icon: ClipboardCheck,
+    title: "Batch Marking",
+    description: "Easily mark entire classes as present and adjust exceptions with a single click.",
   },
   {
     icon: BarChart3,
@@ -112,8 +113,8 @@ const steps = [
 const differentiators = [
   {
     icon: Brain,
-    title: "Only AI Attendance in India",
-    text: "Face recognition attendance is still rare in Indian ed-tech. We've made it plug-and-play for any institution.",
+    title: "Advanced Student Insights",
+    text: "Deep learning path analysis that shows exactly where each student excels or struggles.",
   },
   {
     icon: Trophy,
@@ -142,7 +143,7 @@ const testimonials = [
   {
     name: "Dr. Priya Sharma",
     role: "Dean of CS, IIT Delhi",
-    quote: "SmartCampus AI transformed how we manage attendance. The face recognition feature alone saved us 15 hours per week.",
+    quote: "SmartCampus AI transformed how we manage attendance. The automated workflows saved us 15 hours per week.",
     avatar: "PS",
   },
   {
@@ -175,7 +176,7 @@ const pricingPlans = [
     description: "For growing institutions",
     features: [
       "Up to 500 students",
-      "AI Face Recognition",
+      "Bulk Attendance Tools",
       "Advanced analytics",
       "Online testing",
       "Priority support",

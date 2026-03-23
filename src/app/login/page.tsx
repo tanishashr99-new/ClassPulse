@@ -149,7 +149,7 @@ function LoginContent() {
                   AI-powered attendance, smart analytics, and gamified learning — all in one beautiful platform.
                 </p>
                 <div className="mt-12 space-y-4">
-                  {["Face Recognition Attendance", "Real-time Performance Analytics", "Smart Insights & Predictions"].map((item, i) => (
+                  {["Student Activity Tracking", "Real-time Performance Analytics", "Smart Insights & Predictions"].map((item, i) => (
                     <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.15 }} className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><Sparkles className="w-3 h-3 text-white" /></div>
                       <span className="text-white/90 text-sm font-medium">{item}</span>
@@ -167,7 +167,7 @@ function LoginContent() {
                 </p>
                 <div className="space-y-4">
                   {[
-                    { icon: Camera, text: "AI Face Recognition Attendance" },
+                    { icon: ClipboardCheck, text: "Attendance Management & Reports" },
                     { icon: Users, text: "Student Management & Analytics" },
                     { icon: ClipboardCheck, text: "Assignments & Test Creation" },
                     { icon: BarChart3, text: "Performance Insights Dashboard" },

@@ -179,200 +179,153 @@ export default function AttendancePage() {
       <TopBar title="Attendance" subtitle="Track and manage student attendance" />
 
       <div className="p-6 space-y-6">
-        {/* Mode Toggle */}
+        {/* Attendance Header */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setMode("manual")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              mode === "manual" ? "btn-primary" : "btn-secondary"
-            }`}
-          >
-            <Users className="w-4 h-4" /> Manual Attendance
-          </button>
-          <button
-            onClick={() => setMode("ai")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              mode === "ai" ? "btn-primary" : "btn-secondary"
-            }`}
-          >
-            <Camera className="w-4 h-4" /> AI Face Recognition
-          </button>
+          <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-blue-500 text-white shadow-lg shadow-blue-500/25 cursor-default">
+            <Users className="w-4 h-4" /> Manual Attendance Management
+          </div>
         </div>
 
-        {mode === "manual" ? (
-          <div className="space-y-6">
-            {/* Selectors */}
-            <div className="card p-4 flex flex-wrap items-center gap-4">
-              <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Select Class</label>
-                <select 
-                  value={selectedClass} 
-                  onChange={e => setSelectedClass(e.target.value)}
-                  className="input-field text-sm"
-                >
-                  <option value="">Choose Class...</option>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}-{c.section}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Subject selector removed as Class = Subject in this schema */}
-
-              <div className="flex flex-col gap-1 min-w-[150px]">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Date</label>
-                <input 
-                  type="date" 
-                  value={selectedDate}
-                  onChange={e => setSelectedDate(e.target.value)}
-                  className="input-field text-sm"
-                />
-              </div>
-
-              <button 
-                onClick={loadStudents}
-                disabled={!selectedClass || !selectedSubject || loading}
-                className="btn-primary mt-5 px-6 py-2.5 flex items-center gap-2 min-w-[140px] justify-center"
+        <div className="space-y-6">
+          {/* Selectors */}
+          <div className="card p-4 flex flex-wrap items-center gap-4">
+            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Select Class</label>
+              <select 
+                value={selectedClass} 
+                onChange={e => setSelectedClass(e.target.value)}
+                className="input-field text-sm"
               >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Loading...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Load Students</span> <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+                <option value="">Choose Class...</option>
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}-{c.section}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {loading && (
-              <div className="card p-6 space-y-4">
-                <div className="flex justify-between mb-4">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-                {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} />)}
+            <div className="flex flex-col gap-1 min-w-[150px]">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Date</label>
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="input-field text-sm"
+              />
+            </div>
+
+            <button 
+              onClick={loadStudents}
+              disabled={!selectedClass || !selectedSubject || loading}
+              className="btn-primary mt-5 px-6 py-2.5 flex items-center gap-2 min-w-[140px] justify-center"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <>
+                  <span>Load Students</span> <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {loading && (
+            <div className="card p-6 space-y-4">
+              <div className="flex justify-between mb-4">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-32" />
               </div>
-            )}
+              {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} />)}
+            </div>
+          )}
 
-            {!loading && students.length > 0 && (
-              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="card p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                      Attendance List — {classes.find(c => c.id === selectedClass)?.name}
-                    </h3>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-                    </p>
-                  </div>
-                  <div className="flex gap-4 text-xs font-semibold">
-                    <span className="flex items-center gap-1 text-green-500">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {statusCounts.present} Present
-                    </span>
-                    <span className="flex items-center gap-1 text-amber-500">
-                      <Clock className="w-3.5 h-3.5" /> {statusCounts.late} Late
-                    </span>
-                    <span className="flex items-center gap-1 text-red-500">
-                      <XCircle className="w-3.5 h-3.5" /> {statusCounts.absent} Absent
-                    </span>
-                  </div>
+          {!loading && students.length > 0 && (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="card p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                    Attendance List — {classes.find(c => c.id === selectedClass)?.name}
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                    {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                  </p>
                 </div>
+                <div className="flex gap-4 text-xs font-semibold">
+                  <span className="flex items-center gap-1 text-green-500">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {statusCounts.present} Present
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-500">
+                    <Clock className="w-3.5 h-3.5" /> {statusCounts.late} Late
+                  </span>
+                  <span className="flex items-center gap-1 text-red-500">
+                    <XCircle className="w-3.5 h-3.5" /> {statusCounts.absent} Absent
+                  </span>
+                </div>
+              </div>
 
-                <div className="space-y-2">
-                  {students.map((student, i) => (
-                    <div key={student.id} 
-                      className="flex items-center justify-between p-3 rounded-xl border"
-                      style={{ borderColor: "var(--border-color)" }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                          style={{ background: generateAvatarGradient(student.full_name) }}
-                        >
-                          {getInitials(student.full_name)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                            {student.full_name}
-                          </p>
-                          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
-                        </div>
+              <div className="space-y-2">
+                {students.map((student, i) => (
+                  <div key={student.id} 
+                    className="flex items-center justify-between p-3 rounded-xl border"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                        style={{ background: generateAvatarGradient(student.full_name) }}
+                      >
+                        {getInitials(student.full_name)}
                       </div>
-                      <div className="flex gap-2">
-                        {['present','late','absent'].map(s => (
-                          <button 
-                            key={s}
-                            onClick={() => setStatusMap(prev => ({...prev, [student.id]: s}))}
-                            disabled={alreadyMarked && statusMap[student.id] === s}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
-                              statusMap[student.id] === s
-                                ? s === 'present' 
-                                  ? 'bg-green-500 text-white'
-                                  : s === 'late'
-                                  ? 'bg-amber-500 text-white'
-                                  : 'bg-red-500 text-white'
-                                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                          {student.full_name}
+                        </p>
+                        <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="mt-6">
-                  <button 
-                    onClick={saveAttendance} 
-                    disabled={saving || !Object.keys(statusMap).length}
-                    className="w-full py-3 rounded-xl font-bold text-sm btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {alreadyMarked 
-                      ? '✓ Already submitted — click to update'
-                      : saving ? 'Saving...' 
-                      : `Save Attendance — ${selectedDate}`}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        ) : (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* AI Scanning Logic (Placeholder as requested to keep untouched) */}
-            <div className="lg:col-span-2 card p-0 overflow-hidden relative aspect-video bg-black flex items-center justify-center">
-               <div className="absolute inset-0 opacity-40">
-                  <div className="absolute inset-0 border-2 border-indigo-500/30 animate-pulse" />
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.5)] animate-scan" />
-               </div>
-               
-               <div className="relative z-10 text-center">
-                  <div className="w-20 h-20 rounded-full border-2 border-indigo-500/30 flex items-center justify-center mb-4 mx-auto">
-                     <Camera className="w-10 h-10 text-indigo-500 animate-pulse" />
+                    <div className="flex gap-2">
+                      {['present','late','absent'].map(s => (
+                        <button 
+                          key={s}
+                          onClick={() => setStatusMap(prev => ({...prev, [student.id]: s}))}
+                          disabled={alreadyMarked && statusMap[student.id] === s}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+                            statusMap[student.id] === s
+                              ? s === 'present' 
+                                ? 'bg-green-500 text-white'
+                                : s === 'late'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-red-500 text-white'
+                              : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-1">Continuous Room Scanning...</h3>
-                  <p className="text-indigo-300/70 text-xs font-mono">Camera: Room 302 — Wide Angle Beta</p>
-               </div>
-            </div>
+                ))}
+              </div>
 
-            <div className="card p-6 flex flex-col">
-               <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                     <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Live Detection Feed</h3>
-                  </div>
-               </div>
-               <div className="text-center py-10 opacity-40 italic text-sm">
-                  Initialize scanning to see live feed
-               </div>
-            </div>
-          </motion.div>
-        )}
+              <div className="mt-6">
+                <button 
+                  onClick={saveAttendance} 
+                  disabled={saving || !Object.keys(statusMap).length}
+                  className="w-full py-3 rounded-xl font-bold text-sm btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {alreadyMarked 
+                    ? '✓ Already submitted — click to update'
+                    : saving ? 'Saving...' 
+                    : `Save Attendance — ${selectedDate}`}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -12,73 +12,94 @@ function CallbackHandler() {
   const processing = useRef(false);
 
   useEffect(() => {
+    // Safety timer: If still here after 10 seconds, send back to login
+    const timeoutId = setTimeout(() => {
+      if (processing.current) {
+        console.error("Auth Timeout - Redirecting to login");
+        router.replace("/login?error=Authentication timed out. Please try again.");
+      }
+    }, 10000);
+
     const handleCallback = async () => {
       if (processing.current) return;
       processing.current = true;
 
-      // Get role from query params OR localStorage fallback
-      let role = searchParams.get("role");
-      if (!role && typeof window !== "undefined") {
-        role = localStorage.getItem("intended_role") || "student";
-      }
-      role = role || "student";
+      try {
+        // Get role from query params OR localStorage fallback
+        let role = searchParams.get("role");
+        if (!role && typeof window !== "undefined") {
+          role = localStorage.getItem("intended_role") || "student";
+        }
+        role = role || "student";
 
-      const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (error || !session) {
-        router.replace("/login");
-        return;
-      }
+        if (sessionError || !session) {
+          console.error("Auth Error - No session:", sessionError);
+          router.replace("/login");
+          return;
+        }
 
-      // DOMAIN RESTRICTION CHECK (Instant)
-      const userEmail = session.user.email || "";
-      if (!userEmail.endsWith("@giet.edu")) {
-        await supabase.auth.signOut();
-        router.replace("/login?error=Only @giet.edu accounts are allowed");
-        return;
-      }
+        // DOMAIN RESTRICTION CHECK (Case Insensitive)
+        const userEmail = (session.user.email || "").toLowerCase();
+        if (!userEmail.endsWith("@giet.edu")) {
+          console.warn("Auth Forbidden - Non-GIET email:", userEmail);
+          await supabase.auth.signOut();
+          router.replace("/login?error=Only @giet.edu accounts are allowed");
+          return;
+        }
 
-      // Extract roll number and name (Instant)
-      const emailParts = userEmail.split("@")[0].split(".");
-      const rollNumber = emailParts[0];
-      const rawName = emailParts.slice(1).join(" ");
-      const formattedName = rawName
-        ? rawName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
-        : (session.user.user_metadata?.full_name || session.user.user_metadata?.name || rollNumber || "User");
+        // Extract roll number and name
+        const emailParts = userEmail.split("@")[0].split(".");
+        const rollNumber = emailParts[0];
+        const rawName = emailParts.slice(1).join(" ");
+        const formattedName = rawName
+          ? rawName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+          : (session.user.user_metadata?.full_name || session.user.user_metadata?.name || rollNumber || "User");
 
-      // Check if profile exists (1st DB Call)
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id, role, student_id")
-        .eq("id", session.user.id)
-        .maybeSingle();
+        // Sync Profile
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from("profiles")
+          .select("id, role, student_id")
+          .eq("id", session.user.id)
+          .maybeSingle();
 
-      if (!existingProfile) {
-        // Create profile (2nd DB Call - Only for new users)
-        await supabase.from("profiles").insert({
-          id: session.user.id,
-          email: userEmail,
-          full_name: formattedName,
-          role: role === "admin" ? "admin" : "student",
-          student_id: rollNumber,
-          avatar_url: session.user.user_metadata?.avatar_url || null,
-        });
-      } else if (existingProfile.role === "student" && !existingProfile.student_id) {
-        // Fix missing roll number (Optional DB Call)
-        await supabase.from("profiles").update({ student_id: rollNumber }).eq("id", session.user.id);
-      }
+        if (fetchError) {
+          console.error("Auth Error - Fetch Profile failed:", fetchError);
+          // Don't hang; continue if possible or fail gracefully
+        }
 
-      // Cleanup and Redirect (Instant)
-      if (typeof window !== "undefined") localStorage.removeItem("intended_role");
-      
-      const finalDest = existingProfile?.role === "admin" || existingProfile?.role === "teacher" || role === "admin"
-        ? "/admin" 
-        : "/student";
+        if (!existingProfile) {
+          await supabase.from("profiles").insert({
+            id: session.user.id,
+            email: userEmail,
+            full_name: formattedName,
+            role: role === "admin" ? "admin" : "student",
+            student_id: rollNumber,
+            avatar_url: session.user.user_metadata?.avatar_url || null,
+          });
+        } else if (existingProfile.role === "student" && !existingProfile.student_id) {
+          await supabase.from("profiles").update({ student_id: rollNumber }).eq("id", session.user.id);
+        }
+
+        // Final Redirect
+        if (typeof window !== "undefined") localStorage.removeItem("intended_role");
         
-      router.replace(finalDest);
+        const finalDest = existingProfile?.role === "admin" || existingProfile?.role === "teacher" || role === "admin"
+          ? "/admin" 
+          : "/student";
+          
+        router.replace(finalDest);
+      } catch (err: any) {
+        console.error("Critical Auth Callback Error:", err);
+        router.replace(`/login?error=${encodeURIComponent(err.message || "An unexpected authentication error occurred")}`);
+      } finally {
+        clearTimeout(timeoutId);
+      }
     };
 
     handleCallback();
+    return () => clearTimeout(timeoutId);
   }, [router, searchParams]);
 
   return (

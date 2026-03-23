@@ -39,25 +39,14 @@ function LoginContent() {
     setError(null);
     setLoading(true);
 
-    // Map 'T1' -> 'teacher_auth_t1@smart.edu' to bypass any previous corrupted database rows!
-    const loginEmail = selectedRole === "teacher" 
-      ? `teacher_auth_${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@smart.edu` 
+    // Map 'T1' or 't1' -> 't1@giet.edu', or accept full email as-is
+    const loginEmail = selectedRole === "teacher"
+      ? (email.includes('@') ? email : `${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@giet.edu`)
       : email;
 
     try {
       if (isLogin) {
-        let { error: err } = await signInWithEmail(loginEmail, password);
-        
-        // Auto-signup logic for dummy teachers securely via GoTrue
-        if (err && err.includes("Invalid login credentials") && selectedRole === "teacher") {
-          const { error: signUpErr, confirmationRequired } = await signUpWithEmail(
-            loginEmail, password, `Teacher ${email.toUpperCase()}`, "teacher", { department: "Computer Science" }
-          );
-          if (!signUpErr && !confirmationRequired) {
-            err = null;
-            await signInWithEmail(loginEmail, password);
-          }
-        }
+        const { error: err } = await signInWithEmail(loginEmail, password);
 
         if (err) {
           if (err.includes("Email not confirmed")) {

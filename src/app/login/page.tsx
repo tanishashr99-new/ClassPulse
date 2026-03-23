@@ -37,12 +37,14 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Cleanly map 't1' -> 't1@giet.edu' and 'student1' -> 'student1@demo.com'
+    let loginEmail = email.trim();
+    if (!loginEmail.includes('@')) {
+      loginEmail = selectedRole === "teacher" 
+        ? `${loginEmail.toLowerCase().replace(/[^a-z0-9]/g, '')}@giet.edu`
+        : `${loginEmail.toLowerCase().replace(/[^a-z0-9]/g, '')}@demo.com`;
+    }
     setLoading(true);
-
-    // Map 'T1' or 't1' -> 't1@giet.edu', or accept full email as-is
-    const loginEmail = selectedRole === "teacher"
-      ? (email.includes('@') ? email : `${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@giet.edu`)
-      : email;
 
     try {
       if (isLogin) {

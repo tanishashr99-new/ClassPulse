@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --env-file=.env.local -e \":*)",
+      "Bash(node --env-file=.env.local tmp_fix_teacher_auth.mjs)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

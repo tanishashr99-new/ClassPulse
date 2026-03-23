@@ -11,10 +11,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
 
   useEffect(() => {
-    // Auth bypass disabled for testing
-    // if (!loading && !user) {
-    //   router.push("/login");
-    // }
+    if (!loading && !user) {
+      router.push("/login");
+    }
   }, [loading, user, router]);
 
   if (loading) {
@@ -33,8 +32,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  // Auth completely bypassed for testing purposes
-  // if (!user) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-secondary)" }}>

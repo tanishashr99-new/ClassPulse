@@ -11,9 +11,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
 
   useEffect(() => {
-    // if (!loading && !user) {
-    //   router.push("/login");
-    // }
+    if (!loading && !user) {
+      router.push("/login");
+    }
   }, [loading, user, router]);
 
   if (loading) {
@@ -32,7 +32,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  // if (!user) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-secondary)" }}>

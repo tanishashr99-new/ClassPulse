@@ -204,15 +204,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");
-
-  // Auth bypass for testing without logging in
-  const dummyUser = { id: "00000000-0000-0000-0000-000000000000", email: "demo@bypass.auth" } as any;
-  const dummyProfile = { id: "00000000-0000-0000-0000-000000000000", full_name: "Demo User", role: "student" } as any;
-
-  return {
-    ...context,
-    user: context.user || dummyUser,
-    profile: context.profile || dummyProfile,
-    loading: false
-  };
+  return context;
 }

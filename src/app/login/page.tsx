@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   Brain, Mail, Lock, Eye, EyeOff, Sparkles, GraduationCap, ShieldCheck,
@@ -11,7 +11,8 @@ import {
 
 type SelectedRole = null | "student" | "teacher";
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
   const [selectedRole, setSelectedRole] = useState<SelectedRole>(null);
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +21,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("Computer Science");
   const [studentId, setStudentId] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -99,7 +100,7 @@ export default function LoginPage() {
         
         {/* Dynamic Image Layer for Student Portal */}
         <div 
-          className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-700 \${selectedRole === "student" ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-700 ${selectedRole === "student" ? "opacity-100" : "opacity-0"}`}
           style={{ backgroundImage: "url('/Gemini_Generated_Image_5x1qit5x1qit5x1q.png')" }}
         />
 
@@ -412,5 +413,19 @@ export default function LoginPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+import { Suspense } from "react";
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)" }}>
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

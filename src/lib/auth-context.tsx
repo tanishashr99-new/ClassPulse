@@ -26,22 +26,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Use a ref to track the last user we fetched a profile for to avoid redundant calls
+  const lastFetchedUserId = React.useRef<string | null>(null);
+  const isFetchingProfile = React.useRef<boolean>(false);
+
   // Fetch profile from Supabase
   async function fetchProfile(userId: string) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    if (!userId || (lastFetchedUserId.current === userId && profile)) return profile;
+    if (isFetchingProfile.current) return null;
 
-    if (data) {
-      setProfile(data as Profile);
-      return data as Profile;
-    }
-    
-    // Do not auto-create here to avoid race conditions with auth/callback
-    if (error && error.code !== "PGRST116") {
-      console.error("Error fetching profile:", error);
+    try {
+      isFetchingProfile.current = true;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (data) {
+        lastFetchedUserId.current = userId;
+        setProfile(data as Profile);
+        return data as Profile;
+      }
+      
+      if (error && error.code !== "PGRST116") {
+        // Only log if it's not a "not found" error
+        console.error("Error fetching profile:", error.message || error);
+      }
+    } finally {
+      isFetchingProfile.current = false;
     }
     return null;
   }
@@ -49,46 +62,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
-    supabase.auth.getSession()
-      .then(({ data: { session: s } }) => {
-        if (!mounted) return;
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          fetchProfile(s.user.id).catch(err => {
-            console.error("Initial profile fetch error:", err);
-          });
-        }
-      })
-      .catch(err => {
-        if (mounted) console.error("Auth session error:", err);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    // Use a variable to track if we've already handled the initial load
+    let initialLoadDone = false;
 
-    // Listen for auth changes
+    // We rely on onAuthStateChange which fires INITIAL_SESSION automatically
+    // This handles both the initial load and all subsequent changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, s) => {
         if (!mounted) return;
         
-        // Skip duplicate events if session hasn't changed meaningfully
-        // This helps with "Lock broken" issues by reducing concurrent requests
+        const currentUserId = s?.user?.id || null;
+
+        // Update session/user state
         setSession(s);
         setUser(s?.user ?? null);
         
-        if (s?.user) {
-          await fetchProfile(s.user.id);
+        // Only fetch profile if there is a user
+        if (currentUserId) {
+          // fetchProfile internal guards (lastFetchedUserId ref) already prevent redundant calls
+          await fetchProfile(currentUserId);
         } else {
           setProfile(null);
+          lastFetchedUserId.current = null;
         }
-        setLoading(false);
+        
+        // Always mark loading as false once the first event (usually INITIAL_SESSION) arrives
+        if (!initialLoadDone) {
+          initialLoadDone = true;
+          setLoading(false);
+        }
       }
     );
 
+    // Safety timeout: if onAuthStateChange doesn't fire within 2 seconds, 
+    // stop the loading state anyway (this handles edge cases where auth client hangs)
+    const timeout = setTimeout(() => {
+      if (mounted && !initialLoadDone) {
+        setLoading(false);
+      }
+    }, 2000);
+
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -110,7 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectTo: redirectUrl,
         queryParams: {
           access_type: "offline",
-          prompt: "consent",
+          prompt: "select_account",
+          hd: "giet.edu",
         },
       },
     });

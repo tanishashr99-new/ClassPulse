@@ -10,14 +10,16 @@ interface StatsCardProps {
   changeType?: "positive" | "negative" | "neutral";
   icon: React.ReactNode;
   gradient?: string;
+  onClick?: () => void;
 }
 
-export function StatsCard({ title, value, change, changeType = "neutral", icon, gradient }: StatsCardProps) {
+export function StatsCard({ title, value, change, changeType = "neutral", icon, gradient, onClick }: StatsCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="stat-card group cursor-default"
+      onClick={onClick}
+      className={`stat-card group ${onClick ? "cursor-pointer hover:shadow-lg transition-all" : "cursor-default"}`}
     >
       {gradient && (
         <div

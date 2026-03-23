@@ -11,9 +11,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    // Prevent the "Lock broken by another request with the 'steal' option" error
-    // By disabling lock stealing or letting it handle it more gracefully
     storageKey: 'classpulse-auth-token',
+    // @ts-ignore: lockAcquireTimeout exists in runtime but might be missing in older version types
+    lockAcquireTimeout: 60000,
   }
 });
 

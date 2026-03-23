@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -15,6 +16,7 @@ import { MOCK_CLASSES, MOCK_TESTS, MOCK_ASSIGNMENTS, MOCK_LEADERBOARD, MOCK_DAIL
 
 export default function StudentDashboard() {
   const { user, profile } = useAuth();
+  const router = useRouter();
   const studentId = user?.id || "";
 
   const { data: apiEnrollments, loading: enrollLoading } = useSupabaseQuery(() => studentId ? getEnrollmentsByStudent(studentId) : Promise.resolve([]), [studentId]);
@@ -83,6 +85,7 @@ export default function StudentDashboard() {
                 changeType="positive"
                 icon={<CalendarDays className="w-5 h-5 text-white" />}
                 gradient="linear-gradient(135deg, #10b981, #34d399)"
+                onClick={() => router.push("/student/attendance")}
               />
               <StatsCard
                 title="Assignments"
@@ -91,6 +94,7 @@ export default function StudentDashboard() {
                 changeType="neutral"
                 icon={<FileText className="w-5 h-5 text-white" />}
                 gradient="linear-gradient(135deg, #3b82f6, #60a5fa)"
+                onClick={() => router.push("/student/assignments")}
               />
               <StatsCard
                 title="Leaderboard Rank"
@@ -99,6 +103,7 @@ export default function StudentDashboard() {
                 changeType="positive"
                 icon={<Trophy className="w-5 h-5 text-white" />}
                 gradient="linear-gradient(135deg, #f59e0b, #fbbf24)"
+                onClick={() => router.push("/student/leaderboard")}
               />
               <StatsCard
                 title="Current Streak"
@@ -107,12 +112,18 @@ export default function StudentDashboard() {
                 changeType="positive"
                 icon={<Flame className="w-5 h-5 text-white" />}
                 gradient="linear-gradient(135deg, #ef4444, #f87171)"
+                onClick={() => router.push("/student/roadmap")}
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Attendance Ring */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="card p-6 cursor-pointer hover:shadow-lg transition-all"
+                onClick={() => router.push("/student/attendance")}
+              >
                 <h3 className="text-sm font-semibold mb-6" style={{ color: "var(--text-primary)" }}>Attendance Overview</h3>
                 <div className="flex justify-center mb-6">
                   <AttendanceRing percentage={attendancePercent} size={160} strokeWidth={12} label="This Semester" />
@@ -135,13 +146,17 @@ export default function StudentDashboard() {
 
               {/* Subjects */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card p-6">
-                <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>My Subjects</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>My Subjects</h3>
+                  <button onClick={() => router.push("/admin/classes" as any)} className="text-[10px] font-bold text-blue-500 hover:underline">VIEW ALL</button>
+                </div>
                 <div className="space-y-3">
                   {(enrollments || []).map((enrollment: any) => (
                     <div
                       key={enrollment.class?.id}
                       className="flex items-center gap-3 p-3 rounded-xl border hover:bg-[var(--bg-secondary)] cursor-pointer transition-colors"
                       style={{ borderColor: "var(--border-color)" }}
+                      onClick={() => router.push(`/student/roadmap?subject=${enrollment.class?.id}`)}
                     >
                       <div className="w-1.5 h-10 rounded-full" style={{ background: enrollment.class?.color || "#444" }} />
                       <div className="flex-1">
@@ -158,12 +173,20 @@ export default function StudentDashboard() {
 
               {/* Assignments */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card p-6">
-                <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Assignments</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Assignments</h3>
+                  <button onClick={() => router.push("/student/assignments")} className="text-[10px] font-bold text-blue-500 hover:underline">VIEW ALL</button>
+                </div>
                 <div className="space-y-3">
                   {(assignments || []).map((assignment: any) => {
                     const statusIcon = assignment.status === "completed" ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : assignment.status === "overdue" ? <AlertCircle className="w-4 h-4 text-red-500" /> : <Timer className="w-4 h-4 text-amber-500" />;
                     return (
-                      <div key={assignment.id} className="flex items-center gap-3 p-3 rounded-xl border hover:bg-[var(--bg-secondary)] cursor-pointer transition-colors" style={{ borderColor: "var(--border-color)" }}>
+                      <div 
+                        key={assignment.id} 
+                        className="flex items-center gap-3 p-3 rounded-xl border hover:bg-[var(--bg-secondary)] cursor-pointer transition-colors" 
+                        style={{ borderColor: "var(--border-color)" }}
+                        onClick={() => router.push(`/student/assignments`)}
+                      >
                         {statusIcon}
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{assignment.title}</p>
@@ -178,24 +201,27 @@ export default function StudentDashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SubjectRadarChart data={performanceData} />
+              <div onClick={() => router.push("/student/analytics")} className="cursor-pointer">
+                <SubjectRadarChart data={performanceData} />
+              </div>
 
               {/* Badges */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Badges & Achievements</h3>
-                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                  <button onClick={() => router.push("/student/badges")} className="text-xs font-bold text-blue-500 hover:underline">
                     {(earnedBadges || []).length}/{(allBadges || []).length} earned
-                  </span>
+                  </button>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  {(allBadges || []).map((badge: any) => {
+                  {(allBadges || []).slice(0, 6).map((badge: any) => {
                     const isEarned = (earnedBadges || []).some((eb: any) => eb.badge_id === badge.id);
                     return (
                       <div
                         key={badge.id}
-                        className={`p-4 rounded-xl border text-center transition-all ${isEarned ? "hover:scale-105 cursor-pointer" : "opacity-40"}`}
+                        className={`p-4 rounded-xl border text-center transition-all ${isEarned ? "hover:scale-105 cursor-pointer hover:shadow-md" : "opacity-40"}`}
                         style={{ borderColor: "var(--border-color)" }}
+                        onClick={() => isEarned && router.push("/student/badges")}
                       >
                         <div className="text-3xl mb-2">{badge.icon}</div>
                         <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{badge.name}</p>

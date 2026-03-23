@@ -30,6 +30,18 @@ function CallbackHandler() {
         return;
       }
 
+      // DOMAIN RESTRICTION CHECK
+      const userEmail = session.user.email || "";
+      if (!userEmail.endsWith("@giet.edu")) {
+        console.warn("Auth Callback - Unauthorized domain:", userEmail);
+        await supabase.auth.signOut();
+        router.push("/login?error=Only @giet.edu accounts are allowed");
+        return;
+      }
+
+      // Extract roll number (everything before @giet.edu)
+      const rollNumber = userEmail.split("@")[0];
+
       // Clear storage after successful session retrieval
       if (typeof window !== "undefined") {
         localStorage.removeItem("intended_role");
@@ -38,9 +50,9 @@ function CallbackHandler() {
       // Ensure profile exists
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("id, role")
+        .select("id, role, student_id")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
       console.log("Auth Callback - Profile:", existingProfile);
 
       if (!existingProfile) {
@@ -48,13 +60,14 @@ function CallbackHandler() {
         // Create profile for first-time Google login
         const { error: insertError } = await supabase.from("profiles").insert({
           id: session.user.id,
-          email: session.user.email || "",
+          email: userEmail,
           full_name:
             session.user.user_metadata?.full_name ||
             session.user.user_metadata?.name ||
-            session.user.email?.split("@")[0] ||
+            rollNumber ||
             "User",
           role: role === "admin" ? "admin" : "student", // use the fallback role
+          student_id: rollNumber, // Fetching the roll number itself
           avatar_url: session.user.user_metadata?.avatar_url || null,
         });
 
@@ -70,6 +83,14 @@ function CallbackHandler() {
         console.log("Auth Callback - New user redirecting to:", dest);
         router.push(dest);
       } else {
+        // If student_id is missing for existing profile, update it
+        if (existingProfile.role === "student" && !existingProfile.student_id) {
+          await supabase
+            .from("profiles")
+            .update({ student_id: rollNumber })
+            .eq("id", session.user.id);
+        }
+
         // Route based on existing profile role
         const dest = 
           existingProfile.role === "admin" || existingProfile.role === "teacher"

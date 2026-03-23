@@ -12,7 +12,6 @@ function CallbackHandler() {
   const processing = useRef(false);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
 
     const handleCallback = async () => {
       if (processing.current) return;
@@ -25,28 +24,33 @@ function CallbackHandler() {
         }
         role = role || "student";
 
-        // Wait for session to be established (either it already is, or auto-detect will do it)
-        const checkSession = async () => {
-          let { data: { session }, error } = await supabase.auth.getSession();
-          if (session) return { session, error };
-          
-          // Wait briefly for onAuthStateChange if session isn't immediately ready
+        // Purely wait for the session from the event listener to avoid deadlocking 
+        // with Supabase's internal auto-code-exchange mechanism.
+        const checkSession = () => {
           return new Promise<{ session: any; error: any }>((resolve) => {
             const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-              if (s) {
+              if (event === 'SIGNED_IN' || s) {
                 subscription.unsubscribe();
                 resolve({ session: s, error: null });
-              } else if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+              } else if (event === 'SIGNED_OUT') {
                 subscription.unsubscribe();
-                resolve({ session: null, error: new Error("Auth failed") });
+                resolve({ session: null, error: new Error("Auth failed or signed out") });
               }
             });
-            // Fallback: check one more time if onAuthStateChange doesn't fire
-            setTimeout(async () => {
+
+            // Also trigger a gentle getSession that doesn't block if lock is held
+            supabase.auth.getSession().then(({ data, error }) => {
+               if (data.session) {
+                 subscription.unsubscribe();
+                 resolve({ session: data.session, error });
+               }
+            });
+            
+            // Give it up to 15 seconds to complete the PKCE exchange
+            setTimeout(() => {
               subscription.unsubscribe();
-              const res = await supabase.auth.getSession();
-              resolve({ session: res.data.session, error: res.error });
-            }, 3000);
+              resolve({ session: null, error: new Error("Authentication timeout - no session received") });
+            }, 15000);
           });
         };
 
@@ -54,7 +58,7 @@ function CallbackHandler() {
 
         if (sessionError || !session) {
           console.error("Auth Error - No session:", sessionError);
-          router.replace("/login");
+          router.replace("/login?error=" + encodeURIComponent(sessionError?.message || "Failed to log in"));
           return;
         }
 
@@ -91,21 +95,10 @@ function CallbackHandler() {
       } catch (err: any) {
         console.error("Critical Auth Callback Error:", err);
         router.replace(`/login?error=${encodeURIComponent(err.message || "An unexpected authentication error occurred")}`);
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
       }
     };
 
-    // Safety timer: If still here after 10 seconds, send back to login
-    timeoutId = setTimeout(() => {
-      if (processing.current) {
-        console.error("Auth Timeout - Redirecting to login");
-        router.replace("/login?error=Authentication timed out. Please try again.");
-      }
-    }, 10000);
-
     handleCallback();
-    return () => clearTimeout(timeoutId);
   }, [router, searchParams]);
 
   return (

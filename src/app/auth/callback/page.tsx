@@ -39,8 +39,17 @@ function CallbackHandler() {
         return;
       }
 
-      // Extract roll number (everything before @giet.edu)
-      const rollNumber = userEmail.split("@")[0];
+      // Extract roll number and name (e.g., 24cse388.tanishasharma@giet.edu)
+      const emailPrefix = userEmail.split("@")[0];
+      const emailParts = emailPrefix.split(".");
+      
+      const rollNumber = emailParts[0]; // 24cse388
+      const rawName = emailParts.slice(1).join(" "); // tanishasharma or tanisha sharma
+      
+      // Format Name: title case (e.g., "tanisha sharma" -> "Tanisha Sharma")
+      const formattedName = rawName
+        ? rawName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
+        : (session.user.user_metadata?.full_name || session.user.user_metadata?.name || rollNumber || "User");
 
       // Clear storage after successful session retrieval
       if (typeof window !== "undefined") {
@@ -61,13 +70,9 @@ function CallbackHandler() {
         const { error: insertError } = await supabase.from("profiles").insert({
           id: session.user.id,
           email: userEmail,
-          full_name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            rollNumber ||
-            "User",
+          full_name: formattedName,
           role: role === "admin" ? "admin" : "student", // use the fallback role
-          student_id: rollNumber, // Fetching the roll number itself
+          student_id: rollNumber,
           avatar_url: session.user.user_metadata?.avatar_url || null,
         });
 

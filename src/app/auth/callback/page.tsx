@@ -45,7 +45,7 @@ function CallbackHandler() {
             setTimeout(async () => {
               subscription.unsubscribe();
               const res = await supabase.auth.getSession();
-              resolve(res);
+              resolve({ session: res.data.session, error: res.error });
             }, 3000);
           });
         };
@@ -66,6 +66,23 @@ function CallbackHandler() {
         //   router.replace("/login?error=Only @giet.edu accounts are allowed");
         //   return;
         // }
+
+        // Ensure profile exists for Google OAuth log in
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!existingProfile) {
+          const userEmail = (session.user.email || "").toLowerCase();
+          await supabase.from("profiles").insert({
+            id: session.user.id,
+            email: userEmail,
+            full_name: session.user.user_metadata?.full_name || userEmail.split('@')[0] || "New User",
+            role: role === "admin" ? "admin" : "student", // enforce safe roles
+          });
+        }
 
         if (typeof window !== "undefined") localStorage.removeItem("intended_role");
         

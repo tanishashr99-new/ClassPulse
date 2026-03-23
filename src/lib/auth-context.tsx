@@ -129,7 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryParams: {
           access_type: "offline",
           prompt: "select_account",
-          hd: "giet.edu",
         },
       },
     });
